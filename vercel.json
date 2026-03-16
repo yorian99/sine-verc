@@ -1,6 +1,11 @@
 {
+  "functions": {
+    "api/proxy.js": {
+      "maxDuration": 10
+    }
+  },
   "rewrites": [
-    { "source": "/", "destination": "/index.html" },
-    { "source": "/form", "destination": "/form.html" }
+    { "source": "/api/(.*)", "destination": "/api/proxy" },
+    { "source": "/(.*)", "destination": "/public/$1" }
   ]
 }
