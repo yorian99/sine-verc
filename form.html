@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Form Presensi Pegawai - Korwil Sine (Perbaikan Deteksi Foto)</title>
+  <title>Form Presensi Pegawai - Korwil Sine</title>
   <base target="_top">
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -1296,6 +1296,7 @@
       
       <p class="blocker-footer">
         Ⓨ 2026 Sistem Presensi Pegawai - Team Korwil Sine. 
+      </p>
     </div>
   </div>
   
@@ -1564,7 +1565,7 @@
   </div>
 
   <script>
-    // BACKEND URL (telah diisi)
+    // BACKEND URL
     const BACKEND_URL = 'https://script.google.com/macros/s/AKfycbzqgwrpj7mMOz2sgB5vfwfArPwU5o1h9MkIXrBh-6Vw5_Bl0yGiGGFN22dJdB8JwC_y/exec';
 
     // ==================== KAMERA DEPAN OTOMATIS ====================
@@ -1765,9 +1766,14 @@
         const response = await fetch(BACKEND_URL + '?action=getSession', {
           method: 'POST',
           mode: 'cors',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'text/plain' },
           body: JSON.stringify({ sessionId })
         });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error ${response.status}`);
+        }
+
         const userData = await response.json();
 
         if (!userData) {
@@ -1791,6 +1797,7 @@
           checkPresensiTime();
         }
       } catch (err) {
+        console.error('Session fetch error:', err);
         alert('Terjadi kesalahan: ' + err.message);
         logout();
       }
@@ -1961,7 +1968,7 @@
           await fetch(BACKEND_URL + '?action=logout', {
             method: 'POST',
             mode: 'cors',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'text/plain' },
             body: JSON.stringify({ sessionId })
           });
         } catch (err) {
@@ -2157,9 +2164,14 @@
             const response = await fetch(BACKEND_URL + '?action=presensi', {
               method: 'POST',
               mode: 'cors',
-              headers: { 'Content-Type': 'application/json' },
+              headers: { 'Content-Type': 'text/plain' },
               body: JSON.stringify(formData)
             });
+
+            if (!response.ok) {
+              throw new Error(`HTTP error ${response.status}`);
+            }
+
             const result = await response.json();
 
             if (result.success) {
@@ -2173,6 +2185,7 @@
               submitText.textContent = 'Kirim Presensi';
             }
           } catch (error) {
+            console.error('Submit error:', error);
             messageEl.textContent = 'Error: ' + error.message;
             messageEl.classList.add('error');
             messageEl.style.display = 'block';
