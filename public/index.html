@@ -171,7 +171,6 @@
     }
 
     @keyframes spin {
-
       to { transform: rotate(360deg); }
     }
 
@@ -323,8 +322,8 @@
   </div>
 
   <script>
-    // BACKEND URL (telah diisi)
-    const BACKEND_URL = 'https://script.google.com/macros/s/AKfycbzqgwrpj7mMOz2sgB5vfwfArPwU5o1h9MkIXrBh-6Vw5_Bl0yGiGGFN22dJdB8JwC_y/exec';
+    // Proxy URL (relatif)
+    const PROXY_URL = '/api/proxy';
 
     const loginForm = document.getElementById('loginForm');
     const usernameInput = document.getElementById('username');
@@ -364,19 +363,22 @@
       const password = passwordInput.value;
 
       try {
-        const response = await fetch(BACKEND_URL + '?action=login', {
+        const response = await fetch(`${PROXY_URL}?action=login`, {
           method: 'POST',
-          mode: 'cors',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ username, password })
         });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error ${response.status}`);
+        }
+
         const data = await response.json();
 
         if (data.success) {
           messageEl.textContent = 'Login berhasil! Mengarahkan...';
           messageEl.classList.add('success');
           localStorage.setItem('sessionId', data.sessionId);
-          // Redirect ke halaman form (sesuaikan path Vercel Anda, misal /form)
           setTimeout(() => {
             window.location.href = `/form.html?session=${data.sessionId}`;
           }, 1000);
@@ -386,6 +388,7 @@
           passwordInput.focus();
         }
       } catch (err) {
+        console.error('Fetch error:', err);
         messageEl.textContent = 'Terjadi kesalahan: ' + err.message;
         messageEl.classList.add('error');
       } finally {
@@ -430,12 +433,12 @@
       resetBtnText.textContent = 'Memproses...';
 
       try {
-        const response = await fetch(BACKEND_URL + '?action=resetPassword', {
+        const response = await fetch(`${PROXY_URL}?action=resetPassword`, {
           method: 'POST',
-          mode: 'cors',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ username, newPassword: newPass })
         });
+
         const data = await response.json();
         if (data.success) {
           resetMessageEl.textContent = data.message;
