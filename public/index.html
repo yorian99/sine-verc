@@ -7,7 +7,6 @@
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
-    /* ===== CSS SAMA PERSIS SEPERTI Login.html ASLI ===== */
     :root {
       --primary: #4361ee;
       --primary-dark: #3a56d4;
@@ -21,78 +20,248 @@
       --box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
       --transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
     }
-    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Poppins', sans-serif; }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Poppins', sans-serif;
+    }
+
     body {
       background: linear-gradient(135deg, #f5f7ff, #e6e9ff);
-      display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 20px;
     }
+
     .login-container {
-      background: white; padding: 40px; border-radius: var(--border-radius);
-      width: 100%; max-width: 450px; box-shadow: var(--box-shadow); text-align: center;
-      position: relative; overflow: hidden; z-index: 1;
+      background: white;
+      padding: 40px;
+      border-radius: var(--border-radius);
+      width: 100%;
+      max-width: 450px;
+      box-shadow: var(--box-shadow);
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+      z-index: 1;
     }
+
     .login-container::before {
-      content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 8px;
-      background: linear-gradient(90deg, var(--primary), var(--secondary)); z-index: 2;
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 8px;
+      background: linear-gradient(90deg, var(--primary), var(--secondary));
+      z-index: 2;
     }
-    .logo { width: 80px; height: 80px; margin: 0 auto 20px; display: block; object-fit: contain; }
-    h2 { color: var(--dark); font-weight: 600; margin-bottom: 10px; font-size: 1.8rem; }
-    .subtitle { color: var(--gray); margin-bottom: 30px; font-size: 1.5rem; }
-    .form-group { margin-bottom: 20px; text-align: left; }
-    label { display: block; margin-bottom: 8px; font-weight: 500; color: var(--dark); font-size: 0.95rem; }
-    .input-wrapper { position: relative; }
+
+    .logo {
+      width: 80px;
+      height: 80px;
+      margin: 0 auto 20px;
+      display: block;
+      object-fit: contain;
+    }
+
+    h2 {
+      color: var(--dark);
+      font-weight: 600;
+      margin-bottom: 10px;
+      font-size: 1.8rem;
+    }
+
+    .subtitle {
+      color: var(--gray);
+      margin-bottom: 30px;
+      font-size: 1.5rem;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+      text-align: left;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 500;
+      color: var(--dark);
+      font-size: 0.95rem;
+    }
+
+    .input-wrapper {
+      position: relative;
+    }
+
     .input-wrapper i {
-      position: absolute; left: 15px; top: 50%; transform: translateY(-50%);
-      color: var(--gray); font-size: 1rem;
+      position: absolute;
+      left: 15px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--gray);
+      font-size: 1rem;
     }
-    input[type="text"], input[type="password"] {
-      width: 100%; padding: 14px 14px 14px 45px; border: 1px solid #e0e0e0;
-      border-radius: var(--border-radius); font-size: 0.95rem; transition: var(--transition);
+
+    input[type="text"],
+    input[type="password"] {
+      width: 100%;
+      padding: 14px 14px 14px 45px;
+      border: 1px solid #e0e0e0;
+      border-radius: var(--border-radius);
+      font-size: 0.95rem;
+      transition: var(--transition);
       background-color: #f9f9f9;
     }
+
     input:focus {
-      outline: none; border-color: var(--primary);
-      box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.15); background-color: white;
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.15);
+      background-color: white;
     }
+
     .btn {
-      width: 100%; padding: 14px; border: none; border-radius: var(--border-radius);
-      font-size: 1rem; font-weight: 600; cursor: pointer; transition: var(--transition);
-      margin-top: 10px; display: flex; align-items: center; justify-content: center; gap: 8px;
+      width: 100%;
+      padding: 14px;
+      border: none;
+      border-radius: var(--border-radius);
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: var(--transition);
+      margin-top: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
     }
+
     .btn-primary {
-      background: linear-gradient(135deg, var(--primary), var(--secondary)); color: white;
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      color: white;
     }
+
     .btn-primary:hover {
-      transform: translateY(-2px); box-shadow: 0 5px 15px rgba(67, 97, 238, 0.3);
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(67, 97, 238, 0.3);
     }
+
     .btn-primary:disabled {
-      background: #cccccc; transform: none; box-shadow: none; cursor: not-allowed;
+      background: #cccccc;
+      transform: none;
+      box-shadow: none;
+      cursor: not-allowed;
     }
+
     .spinner {
-      display: none; width: 24px; height: 24px;
-      border: 3px solid rgba(255, 255, 255, 0.3); border-radius: 50%;
-      border-top-color: white; animation: spin 1s ease-in-out infinite; margin-right: 8px;
+      display: none;
+      width: 24px;
+      height: 24px;
+      border: 3px solid rgba(255, 255, 255, 0.3);
+      border-radius: 50%;
+      border-top-color: white;
+      animation: spin 1s ease-in-out infinite;
+      margin-right: 8px;
     }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    #message { margin: 20px 0; padding: 12px; border-radius: var(--border-radius); font-size: 0.9rem; text-align: center; }
-    .error { background-color: #fff0f0; color: #dc3545; border: 1px solid #ffcccc; }
-    .success { background-color: #f0fff4; color: #28a745; border: 1px solid #c3e6cb; }
-    .footer { margin-top: 30px; color: var(--gray); font-size: 0.8rem; }
-    /* Modal */
+
+    @keyframes spin {
+
+      to { transform: rotate(360deg); }
+    }
+
+    #message {
+      margin: 20px 0;
+      padding: 12px;
+      border-radius: var(--border-radius);
+      font-size: 0.9rem;
+      text-align: center;
+    }
+
+    .error {
+      background-color: #fff0f0;
+      color: #dc3545;
+      border: 1px solid #ffcccc;
+    }
+
+    .success {
+      background-color: #f0fff4;
+      color: #28a745;
+      border: 1px solid #c3e6cb;
+    }
+
+    .footer {
+      margin-top: 30px;
+      color: var(--gray);
+      font-size: 0.8rem;
+    }
+
     .modal {
-      display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%;
-      overflow: auto; background-color: rgba(0,0,0,0.4); justify-content: center; align-items: center;
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      overflow: auto;
+      background-color: rgba(0,0,0,0.4);
+      justify-content: center;
+      align-items: center;
     }
+
     .modal-content {
-      background-color: #fefefe; margin: auto; padding: 30px; border-radius: var(--border-radius);
-      box-shadow: var(--box-shadow); width: 90%; max-width: 500px; position: relative;
-      animation: fadeIn 0.3s ease-out; max-height: 90vh; overflow-y: auto;
+      background-color: #fefefe;
+      margin: auto;
+      padding: 30px;
+      border-radius: var(--border-radius);
+      box-shadow: var(--box-shadow);
+      width: 90%;
+      max-width: 500px;
+      position: relative;
+      animation: fadeIn 0.3s ease-out;
+      max-height: 90vh;
+      overflow-y: auto;
     }
-    .close-button { color: #aaa; float: right; font-size: 28px; font-weight: bold; position: absolute; top: 10px; right: 20px; cursor: pointer; }
-    .close-button:hover { color: var(--danger); }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
-    #forgotPasswordLink { display: block; margin-top: 15px; color: var(--primary); text-decoration: none; font-size: 0.9rem; font-weight: 500; }
-    #forgotPasswordLink:hover { color: var(--primary-dark); text-decoration: underline; }
+
+    .close-button {
+      color: #aaa;
+      float: right;
+      font-size: 28px;
+      font-weight: bold;
+      position: absolute;
+      top: 10px;
+      right: 20px;
+      cursor: pointer;
+    }
+
+    .close-button:hover {
+      color: var(--danger);
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    #forgotPasswordLink {
+      display: block;
+      margin-top: 15px;
+      color: var(--primary);
+      text-decoration: none;
+      font-size: 0.9rem;
+      font-weight: 500;
+    }
+
+    #forgotPasswordLink:hover {
+      color: var(--primary-dark);
+      text-decoration: underline;
+    }
   </style>
 </head>
 <body>
@@ -154,7 +323,8 @@
   </div>
 
   <script>
-    const PROXY_URL = '/api/proxy';
+    // BACKEND URL (telah diisi)
+    const BACKEND_URL = 'https://script.google.com/macros/s/AKfycbzqgwrpj7mMOz2sgB5vfwfArPwU5o1h9MkIXrBh-6Vw5_Bl0yGiGGFN22dJdB8JwC_y/exec';
 
     const loginForm = document.getElementById('loginForm');
     const usernameInput = document.getElementById('username');
@@ -164,6 +334,7 @@
     const loadingSpinner = document.getElementById('loadingSpinner');
     const loginText = document.getElementById('loginText');
 
+    // Forgot Password elements
     const forgotPasswordLink = document.getElementById('forgotPasswordLink');
     const forgotPasswordModal = document.getElementById('forgotPasswordModal');
     const closeButton = document.querySelector('.close-button');
@@ -193,20 +364,19 @@
       const password = passwordInput.value;
 
       try {
-        const response = await fetch(`${PROXY_URL}?action=login`, {
+        const response = await fetch(BACKEND_URL + '?action=login', {
           method: 'POST',
+          mode: 'cors',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ username, password })
         });
-
-        if (!response.ok) throw new Error(`HTTP error ${response.status}`);
-
         const data = await response.json();
 
         if (data.success) {
           messageEl.textContent = 'Login berhasil! Mengarahkan...';
           messageEl.classList.add('success');
           localStorage.setItem('sessionId', data.sessionId);
+          // Redirect ke halaman form (sesuaikan path Vercel Anda, misal /form)
           setTimeout(() => {
             window.location.href = `/form.html?session=${data.sessionId}`;
           }, 1000);
@@ -260,12 +430,12 @@
       resetBtnText.textContent = 'Memproses...';
 
       try {
-        const response = await fetch(`${PROXY_URL}?action=resetPassword`, {
+        const response = await fetch(BACKEND_URL + '?action=resetPassword', {
           method: 'POST',
+          mode: 'cors',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ username, newPassword: newPass })
         });
-
         const data = await response.json();
         if (data.success) {
           resetMessageEl.textContent = data.message;
