@@ -1921,7 +1921,7 @@
       const pulangSlot = document.querySelector('.time-slot.pulang');
       const pulangStatus = pulangSlot.querySelector('.slot-status');
       const pulangTime = pulangSlot.querySelector('.slot-time');
-      pulangTime.textContent = '14:00 ';
+      pulangTime.textContent = '14:30 ';
       
       if (isPulangTime) {
         pulangSlot.classList.add('active');
@@ -2023,7 +2023,7 @@
         if (hours < PRESENSI_DATANG_START) {
           timeNotificationText.innerHTML = `Saat ini pukul ${currentTime}. Presensi Datang dimulai pukul 06:30-07:15 WIB.`;
         } else if (hours >= PRESENSI_DATANG_END && hours < PRESENSI_PULANG_START) {
-          timeNotificationText.innerHTML = `Saat ini pukul ${currentTime}. Presensi Pulang dimulai pukul 14:00-17:30 WIB.`;
+          timeNotificationText.innerHTML = `Saat ini pukul ${currentTime}. Presensi Pulang dimulai pukul 14:30-17:30 WIB.`;
         } else if (hours >= PRESENSI_PULANG_END) {
           timeNotificationText.innerHTML = `Saat ini pukul ${currentTime}. Presensi untuk hari ini sudah berakhir.`;
         }
