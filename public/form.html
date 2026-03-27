@@ -2,13 +2,11 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Form Presensi Pegawai - Korwil Sine</title>
   <base target="_top">
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <!-- Face API JS CDN -->
-  <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
   <style>
     /* ==================== FAKE GPS BLOCKER STYLES ==================== */
     #fakeGPSBlocker {
@@ -1172,25 +1170,6 @@
       color: var(--secondary);
     }
 
-    /* Face detection status */
-    .face-status {
-      margin-top: 10px;
-      padding: 8px;
-      border-radius: var(--border-radius);
-      font-size: 0.85rem;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    .face-status.success {
-      background: #e8f5e9;
-      color: #2e7d32;
-    }
-    .face-status.error {
-      background: #ffebee;
-      color: #c62828;
-    }
-
     @media (max-width: 480px) {
       .card {
         padding: 20px;
@@ -1459,12 +1438,16 @@
       </div>
 
       <form id="presensiForm">
+        <!-- Input hidden untuk menyimpan sessionId dan jenis presensi -->
         <input type="hidden" id="sessionId" name="sessionId">
         <input type="hidden" id="presensiType" name="presensi">
+        
+        <!-- TAMBAHKAN TIGA INPUT HIDDEN DI SINI -->
         <input type="hidden" name="clientTime" id="clientTime">
         <input type="hidden" name="timeDrift" id="timeDrift">
         <input type="hidden" name="lastPresensiTime" id="lastPresensiTime">
         
+        <!-- Modern Attendance Type Notification -->
         <div class="attendance-notification">
           <div class="attendance-header">
             <div class="attendance-title">
@@ -1511,12 +1494,13 @@
         </div>
 
         <div class="form-group">
-          <label for="file">Bukti Dukung (Foto Wajah Jelas)</label>
+          <label for="file">Bukti Dukung</label>
           <div class="alert alert-light p-2 mb-2" style="font-size: 0.9rem; border: 1px solid #eee;">
-            <div class="mb-1">1. Foto harus Jelas Menampilkan WAJAH Pegawai Yang Melakukan Presensi.</div>
-            <div>2. Hindari Foto background alam (pohon, dinding, pemandangan)</div>
+            <div class="mb-1">1. Foto harus Jelas Menampilkan Pegawai Yang Melakukan Presensi.</div>
+            <div> 2. Hindari Foto background alam (pohon, dinding, pemandangan)</div>
           </div>
           
+          <!-- Kamera preview langsung muncul -->
           <div id="cameraPreview" style="margin: 15px 0; display: none;">
             <video id="video" autoplay playsinline style="width: 100%; border-radius: 12px; background: #000;"></video>
             <div style="display: flex; justify-content: center; margin-top: 10px; gap: 10px;">
@@ -1529,15 +1513,16 @@
           <canvas id="canvas" style="display: none;"></canvas>
           <input type="hidden" id="photoData" name="photoData">
           
+          <!-- Image Preview Container -->
           <div id="imagePreviewContainer" class="image-preview-container">
             <img id="imagePreview" class="image-preview">
-            <div id="faceDetectionStatus" class="face-status" style="display: none;"></div>
             <button id="retakeBtn" class="btn btn-secondary" style="margin-top: 10px; width: 100%;">
               <i class="fas fa-camera"></i> Ambil Ulang
             </button>
           </div>
         </div>
 
+        <!-- Info Lokasi Lembaga (dipindahkan di bawah Bukti Dukung) -->
         <div class="location-info">
           <div class="location-detail">
             <h3><i class="fas fa-map-marker-alt"></i> Lokasi Lembaga</h3>
@@ -1560,6 +1545,8 @@
             <input type="text" id="latitude" name="latitude" placeholder="Latitude" readonly style="flex: 1;">
             <input type="text" id="longitude" name="longitude" placeholder="Longitude" readonly style="flex: 1;">
           </div>
+          
+          <!-- GPS Indicator -->
           <div class="gps-indicator">
             <div class="dot" id="gpsDot"></div>
             <span id="gpsStatus">Mendeteksi lokasi...</span>
@@ -1577,50 +1564,10 @@
   </div>
 
   <script>
+    // Proxy URL (relatif)
     const PROXY_URL = '/api/proxy';
-    let isFaceDetected = false;
-    let faceDetectionModelLoaded = false;
 
-    async function loadFaceDetectionModel() {
-      try {
-        await faceapi.nets.tinyFaceDetector.loadFromUri('/models'); // pastikan model ada, fallback ke CDN
-      } catch(e) {
-        console.warn("Local model not found, using CDN fallback");
-        await faceapi.nets.tinyFaceDetector.loadFromUri('https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/weights');
-      }
-      faceDetectionModelLoaded = true;
-    }
-
-    async function detectFaceOnImage(imageElement) {
-      if (!faceDetectionModelLoaded) {
-        console.warn("Model belum siap");
-        return false;
-      }
-      try {
-        const detections = await faceapi.detectAllFaces(imageElement, new faceapi.TinyFaceDetectorOptions());
-        return detections.length > 0;
-      } catch(err) {
-        console.error("Face detection error", err);
-        return false;
-      }
-    }
-
-    function updateFaceStatus(hasFace) {
-      const statusDiv = document.getElementById('faceDetectionStatus');
-      if (!statusDiv) return;
-      statusDiv.style.display = 'flex';
-      if (hasFace) {
-        statusDiv.innerHTML = '<i class="fas fa-smile-wink"></i> Wajah terdeteksi. Foto valid.';
-        statusDiv.className = 'face-status success';
-        isFaceDetected = true;
-      } else {
-        statusDiv.innerHTML = '<i class="fas fa-user-slash"></i> Tidak ada wajah terdeteksi. Harap ambil foto dengan wajah jelas.';
-        statusDiv.className = 'face-status error';
-        isFaceDetected = false;
-      }
-    }
-
-    // Kamera & Capture
+    // ==================== KAMERA DEPAN OTOMATIS ====================
     const video = document.getElementById('video');
     const canvas = document.getElementById('canvas');
     const photoData = document.getElementById('photoData');
@@ -1629,6 +1576,7 @@
     const imagePreview = document.getElementById('imagePreview');
     const imagePreviewContainer = document.getElementById('imagePreviewContainer');
     const retakeBtn = document.getElementById('retakeBtn');
+    
     let stream = null;
     
     function dataURLtoBlob(dataUrl) {
@@ -1663,7 +1611,7 @@
       }
     }
     
-    captureBtn.addEventListener('click', async function() {
+    captureBtn.addEventListener('click', function() {
       captureBtn.style.display = 'none';
       const context = canvas.getContext('2d');
       canvas.width = video.videoWidth;
@@ -1682,29 +1630,15 @@
       cameraPreview.style.display = 'none';
       const blob = dataURLtoBlob(dataUrl);
       window.capturedFile = new File([blob], "presensi.jpg", {type: 'image/jpeg'});
-      
-      // Face detection on captured image
-      if (faceDetectionModelLoaded) {
-        const faceResult = await detectFaceOnImage(imagePreview);
-        updateFaceStatus(faceResult);
-      } else {
-        // fallback: if model not ready, try to load first
-        await loadFaceDetectionModel();
-        const faceResult = await detectFaceOnImage(imagePreview);
-        updateFaceStatus(faceResult);
-      }
     });
 
     retakeBtn.addEventListener('click', function() {
       imagePreviewContainer.style.display = 'none';
       cameraPreview.style.display = 'block';
       startCamera();
-      isFaceDetected = false;
-      const statusDiv = document.getElementById('faceDetectionStatus');
-      if(statusDiv) statusDiv.style.display = 'none';
     });
 
-    // Existing functions (GPS, dll) disingkat agar tidak mengganggu - semuanya tetap sama, hanya ditambahkan pengecekan wajah
+    // ==================== ENHANCED FAKE GPS DETECTION ====================
     function detectFakeGPS(position) {
       if (typeof position.mocked !== 'undefined' && position.mocked) return true;
       if (position.coords.accuracy < 1 || position.coords.accuracy > 10000) return true;
@@ -1756,10 +1690,12 @@
       document.getElementById('submitBtn').disabled = true;
       document.getElementById('latitude').value = '';
       document.getElementById('longitude').value = '';
-      document.getElementById('gpsStatus').innerHTML = '<i class="fas fa-ban" style="color: #f44336;"></i> Lokasi palsu terdeteksi!';
+      document.getElementById('gpsStatus').innerHTML = 
+        '<i class="fas fa-ban" style="color: #f44336;"></i> Lokasi palsu terdeteksi!';
       document.getElementById('gpsDot').classList.remove('active');
     }
     
+    // ==================== DESKTOP BLOCKER ====================
     function checkDevice() {
       const userAgent = navigator.userAgent;
       const desktopOS = ['Windows', 'Mac OS', 'Linux'];
@@ -1774,8 +1710,8 @@
       return true;
     }
     
-    document.addEventListener('DOMContentLoaded', async function() {
-      await loadFaceDetectionModel();
+    // ==================== SPLASH SCREEN ====================
+    document.addEventListener('DOMContentLoaded', function() {
       const isAllowedDevice = checkDevice();
       if (!isAllowedDevice) return;
       document.body.classList.add('splash-active');
@@ -1798,7 +1734,9 @@
       document.querySelector('.modal-btn.logout').addEventListener('click', confirmLogout);
       
       const lastPresensi = localStorage.getItem('lastPresensi');
-      if (lastPresensi) document.getElementById('lastPresensiTime').value = lastPresensi;
+      if (lastPresensi) {
+        document.getElementById('lastPresensiTime').value = lastPresensi;
+      }
       let timeDrift = 0;
       if (lastPresensi) {
         const now = new Date();
@@ -1806,18 +1744,20 @@
         timeDrift = (now - lastTime) / (1000 * 60);
       }
       document.getElementById('timeDrift').value = timeDrift;
-      document.getElementById('presensiForm').addEventListener('submit', function(e) {
+      document.getElementById('presensiForm').addEventListener('submit', function() {
         document.getElementById('clientTime').value = new Date().toISOString();
         localStorage.setItem('lastPresensi', new Date().toISOString());
       });
 
       const urlParams = new URLSearchParams(window.location.search);
       let sessionId = urlParams.get('session') || localStorage.getItem('sessionId');
+      
       if (!sessionId) {
         alert('Sesi tidak valid. Silakan login kembali.');
         logout();
         return;
       }
+      
       document.getElementById('sessionId').value = sessionId;
       localStorage.setItem('sessionId', sessionId);
       
@@ -1827,8 +1767,11 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ sessionId })
         });
+
         if (!response.ok) throw new Error(`HTTP error ${response.status}`);
+
         const userData = await response.json();
+
         if (!userData) {
           alert('Sesi tidak valid. Silakan login kembali.');
           logout();
@@ -1836,7 +1779,11 @@
           localStorage.setItem('sessionData', JSON.stringify(userData));
           document.getElementById('namaLembaga').value = userData.namaLembaga;
           document.getElementById('namaPegawai').value = userData.namaPegawai;
-          displayLembagaLocation(userData.lembagaLatitude, userData.lembagaLongitude, userData.lembagaRadius);
+          displayLembagaLocation(
+            userData.lembagaLatitude, 
+            userData.lembagaLongitude, 
+            userData.lembagaRadius
+          );
           updateCurrentTime();
           setInterval(updateCurrentTime, 1000);
           updateAttendanceStatus();
@@ -1863,7 +1810,11 @@
       if (userLat && userLon && lembagaLat && lembagaLon) {
         const distance = calculateDistance(userLat, userLon, lembagaLat, lembagaLon);
         document.getElementById('distanceValue').textContent = distance.toFixed(2);
-        document.getElementById('distanceValue').style.color = distance > radius ? '#f44336' : '#4caf50';
+        if (distance > radius) {
+          document.getElementById('distanceValue').style.color = '#f44336';
+        } else {
+          document.getElementById('distanceValue').style.color = '#4caf50';
+        }
         return distance;
       }
       return 0;
@@ -1872,21 +1823,36 @@
     function startLocationTracking() {
       const gpsStatus = document.getElementById('gpsStatus');
       const gpsDot = document.getElementById('gpsDot');
+      
       gpsStatus.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mendeteksi lokasi...';
       gpsDot.classList.remove('active');
-      if (watchID) navigator.geolocation.clearWatch(watchID);
+      
+      if (watchID) {
+        navigator.geolocation.clearWatch(watchID);
+      }
+      
       if (navigator.geolocation) {
         watchID = navigator.geolocation.watchPosition(
           position => {
-            if (detectFakeGPS(position)) { showFakeGPSBlocker(); return; }
+            if (detectFakeGPS(position)) {
+              showFakeGPSBlocker();
+              return;
+            }
+            
             const userLat = position.coords.latitude;
             const userLon = position.coords.longitude;
+            
             document.getElementById('latitude').value = userLat;
             document.getElementById('longitude').value = userLon;
+            
             const sessionData = JSON.parse(localStorage.getItem('sessionData'));
             if (sessionData) {
-              updateDistanceDisplay(userLat, userLon, parseFloat(sessionData.lembagaLatitude), parseFloat(sessionData.lembagaLongitude), parseFloat(sessionData.lembagaRadius));
+              const lembagaLat = parseFloat(sessionData.lembagaLatitude);
+              const lembagaLon = parseFloat(sessionData.lembagaLongitude);
+              const radius = parseFloat(sessionData.lembagaRadius);
+              updateDistanceDisplay(userLat, userLon, lembagaLat, lembagaLon, radius);
             }
+            
             gpsStatus.innerHTML = '<i class="fas fa-check-circle" style="color: #28a745;"></i> Lokasi berhasil didapatkan';
             gpsDot.classList.add('active');
             document.getElementById('gpsBlocker').style.display = 'none';
@@ -1901,14 +1867,21 @@
               gpsDot.classList.remove('active');
             }
           },
-          { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+          { 
+            enableHighAccuracy: true,
+            timeout: 5000,
+            maximumAge: 0
+          }
         );
       } else {
-        gpsStatus.innerHTML = '<i class="fas fa-exclamation-circle" style="color: #dc3545;"></i> Geolocation tidak didukung.';
+        gpsStatus.innerHTML = '<i class="fas fa-exclamation-circle" style="color: #dc3545;"></i> Geolocation tidak didukung oleh browser ini.';
       }
     }
     
-    const PRESENSI_DATANG_START = 6, PRESENSI_DATANG_END = 8, PRESENSI_PULANG_START = 12, PRESENSI_PULANG_END = 19.5;
+    const PRESENSI_DATANG_START = 6;
+    const PRESENSI_DATANG_END = 8;
+    const PRESENSI_PULANG_START = 14;
+    const PRESENSI_PULANG_END = 19.5;
     
     function updateCurrentTime() {
       const now = new Date();
@@ -1925,10 +1898,15 @@
       const utcTime = now.getTime() + (now.getTimezoneOffset() * 60000);
       const wibTime = new Date(utcTime + (3600000 * 7));
       const hours = wibTime.getHours() + (wibTime.getMinutes() / 60);
+
       const isDatangTime = hours >= PRESENSI_DATANG_START && hours < PRESENSI_DATANG_END;
       const isPulangTime = hours >= PRESENSI_PULANG_START && hours < PRESENSI_PULANG_END;
+      
       const datangSlot = document.querySelector('.time-slot.datang');
       const datangStatus = datangSlot.querySelector('.slot-status');
+      const datangTime = datangSlot.querySelector('.slot-time');
+      datangTime.textContent = '07:30 ';
+      
       if (isDatangTime) {
         datangSlot.classList.add('active');
         datangStatus.textContent = 'Aktif Sekarang';
@@ -1939,8 +1917,12 @@
         datangStatus.textContent = hours < PRESENSI_DATANG_START ? 'Belum Aktif' : 'Tidak Aktif';
         datangStatus.className = 'slot-status status-inactive';
       }
+      
       const pulangSlot = document.querySelector('.time-slot.pulang');
       const pulangStatus = pulangSlot.querySelector('.slot-status');
+      const pulangTime = pulangSlot.querySelector('.slot-time');
+      pulangTime.textContent = '14:30 ';
+      
       if (isPulangTime) {
         pulangSlot.classList.add('active');
         pulangStatus.textContent = 'Aktif Sekarang';
@@ -1953,9 +1935,18 @@
       }
     }
 
-    function showLogoutModal() { document.getElementById('logoutModal').style.display = 'flex'; }
-    function closeModal() { document.getElementById('logoutModal').style.display = 'none'; }
-    function confirmLogout() { closeModal(); logout(); }
+    function showLogoutModal() {
+      document.getElementById('logoutModal').style.display = 'flex';
+    }
+    
+    function closeModal() {
+      document.getElementById('logoutModal').style.display = 'none';
+    }
+    
+    function confirmLogout() {
+      closeModal();
+      logout();
+    }
 
     async function logout() {
       const sessionId = localStorage.getItem('sessionId');
@@ -1963,45 +1954,79 @@
       const originalLogoutText = logoutBtn.innerHTML;
       logoutBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Logging out...';
       logoutBtn.disabled = true;
-      if (watchID) navigator.geolocation.clearWatch(watchID);
-      if (sessionId) {
-        try { await fetch(`${PROXY_URL}?action=logout`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionId }) }); } catch (err) { console.error(err); }
+      
+      if (watchID) {
+        navigator.geolocation.clearWatch(watchID);
       }
+      
+      if (sessionId) {
+        try {
+          await fetch(`${PROXY_URL}?action=logout`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sessionId })
+          });
+        } catch (err) {
+          console.error('Logout error:', err);
+        }
+      }
+      
       const notification = document.getElementById('logoutNotification');
       notification.classList.add('show');
+      
       localStorage.removeItem('sessionId');
       localStorage.removeItem('sessionData');
-      setTimeout(() => { window.location.href = '/'; }, 2000);
+      
+      setTimeout(() => {
+        window.location.href = '/'; // Redirect ke halaman login
+      }, 2000);
     }
     
-    function closeTimeNotification() { document.getElementById('timeNotification').classList.remove('show'); }
+    function closeTimeNotification() {
+      document.getElementById('timeNotification').classList.remove('show');
+    }
+
     function getCurrentWIBTime() {
       const now = new Date();
       const utcTime = now.getTime() + (now.getTimezoneOffset() * 60000);
-      return new Date(utcTime + (3600000 * 7));
+      const wibTime = new Date(utcTime + (3600000 * 7));
+      return wibTime;
     }
+
     function isValidPresensiTime() {
       const now = getCurrentWIBTime();
       const hours = now.getHours() + (now.getMinutes() / 60);
-      return (hours >= PRESENSI_DATANG_START && hours < PRESENSI_DATANG_END) || (hours >= PRESENSI_PULANG_START && hours < PRESENSI_PULANG_END);
+      const isDatangTime = hours >= PRESENSI_DATANG_START && hours < PRESENSI_DATANG_END;
+      const isPulangTime = hours >= PRESENSI_PULANG_START && hours < PRESENSI_PULANG_END;
+      return isDatangTime || isPulangTime;
     }
+    
     function checkPresensiTime() {
       const now = getCurrentWIBTime();
       const hours = now.getHours() + (now.getMinutes() / 60);
-      const currentTime = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')} WIB`;
+      const formattedHours = now.getHours().toString().padStart(2, '0');
+      const formattedMinutes = now.getMinutes().toString().padStart(2, '0');
+      const currentTime = `${formattedHours}:${formattedMinutes} WIB`;
+      
       const submitBtn = document.getElementById('submitBtn');
       const timeNotification = document.getElementById('timeNotification');
       const timeNotificationText = document.getElementById('timeNotificationText');
+      
       const isDatangTime = hours >= PRESENSI_DATANG_START && hours < PRESENSI_DATANG_END;
       const isPulangTime = hours >= PRESENSI_PULANG_START && hours < PRESENSI_PULANG_END;
+      
       if (isDatangTime || isPulangTime) {
         timeNotification.classList.remove('show');
         submitBtn.disabled = false;
       } else {
         submitBtn.disabled = true;
-        if (hours < PRESENSI_DATANG_START) timeNotificationText.innerHTML = `Saat ini pukul ${currentTime}. Presensi Datang dimulai pukul 06:30-07:15 WIB.`;
-        else if (hours >= PRESENSI_DATANG_END && hours < PRESENSI_PULANG_START) timeNotificationText.innerHTML = `Saat ini pukul ${currentTime}. Presensi Pulang dimulai pukul 14:30-17:30 WIB.`;
-        else if (hours >= PRESENSI_PULANG_END) timeNotificationText.innerHTML = `Saat ini pukul ${currentTime}. Presensi untuk hari ini sudah berakhir.`;
+        if (hours < PRESENSI_DATANG_START) {
+          timeNotificationText.innerHTML = `Saat ini pukul ${currentTime}. Presensi Datang dimulai pukul 06:30-07:15 WIB.`;
+        } else if (hours >= PRESENSI_DATANG_END && hours < PRESENSI_PULANG_START) {
+          timeNotificationText.innerHTML = `Saat ini pukul ${currentTime}. Presensi Pulang dimulai pukul 14:30-17:30 WIB.`;
+        } else if (hours >= PRESENSI_PULANG_END) {
+          timeNotificationText.innerHTML = `Saat ini pukul ${currentTime}. Presensi untuk hari ini sudah berakhir.`;
+        }
         timeNotification.classList.add('show');
       }
     }
@@ -2019,7 +2044,9 @@
           canvas.width = MAX_WIDTH;
           canvas.height = height;
           ctx.drawImage(img, 0, 0, MAX_WIDTH, height);
-          canvas.toBlob(callback, 'image/jpeg', 0.7);
+          canvas.toBlob(function(blob) {
+            callback(blob);
+          }, 'image/jpeg', 0.7);
         };
         img.src = e.target.result;
       };
@@ -2028,19 +2055,27 @@
 
     function showRadiusConfirmation(distance, radius, namaLembaga) {
       const progressPercent = Math.min(100, (distance / radius) * 100);
-      document.getElementById('radiusWarningText').textContent = `Anda berada ${distance.toFixed(2)}m dari ${namaLembaga} (radius: ${radius}m). Tetap lanjutkan?`;
+      document.getElementById('radiusWarningText').textContent = 
+        `Anda berada ${distance.toFixed(2)}m dari ${namaLembaga} (radius: ${radius}m). Tetap lanjutkan?`;
       document.getElementById('warningLembaga').textContent = namaLembaga;
       document.getElementById('warningDistance').textContent = `Jarak: ${distance.toFixed(2)} meter`;
       document.getElementById('warningRadius').textContent = `Radius yang diizinkan: ${radius} meter`;
       document.getElementById('progressPercentage').textContent = `${Math.round(progressPercent)}%`;
-      setTimeout(() => { document.getElementById('radiusProgressFill').style.width = `${progressPercent}%`; }, 100);
+      setTimeout(() => {
+        document.getElementById('radiusProgressFill').style.width = `${progressPercent}%`;
+      }, 100);
       document.getElementById('radiusWarningPopup').style.display = 'flex';
     }
 
-    function continuePresensi() { document.getElementById('radiusWarningPopup').style.display = 'none'; submitPresensiForm(); }
+    function continuePresensi() {
+      document.getElementById('radiusWarningPopup').style.display = 'none';
+      submitPresensiForm();
+    }
+
     function cancelPresensi() {
       document.getElementById('radiusWarningPopup').style.display = 'none';
-      document.getElementById('submitBtn').disabled = false;
+      const submitBtn = document.getElementById('submitBtn');
+      submitBtn.disabled = false;
       document.getElementById('loadingSpinner').style.display = 'none';
       document.getElementById('submitText').textContent = 'Kirim Presensi';
     }
@@ -2057,8 +2092,17 @@
       const countdownInterval = setInterval(() => {
         seconds--;
         countdownText.textContent = `${seconds} detik`;
-        if (seconds <= 0) { clearInterval(countdownInterval); logout(); }
+        if (seconds <= 0) {
+          clearInterval(countdownInterval);
+          logout();
+        }
       }, 1000);
+    }
+    
+    function redirectToLogin() {
+      localStorage.removeItem('sessionId');
+      localStorage.removeItem('sessionData');
+      window.location.href = '/';
     }
     
     async function submitPresensiForm() {
@@ -2066,24 +2110,31 @@
       const loadingSpinner = document.getElementById('loadingSpinner');
       const submitText = document.getElementById('submitText');
       const messageEl = document.getElementById('message');
+
       messageEl.textContent = '';
       messageEl.className = '';
       messageEl.style.display = 'none';
+
       const latitude = document.getElementById('latitude').value;
       const longitude = document.getElementById('longitude').value;
-      if (!latitude || !longitude) { alert('Mohon dapatkan lokasi terlebih dahulu.'); return; }
-      const fileToUpload = window.capturedFile;
-      if (!fileToUpload) { alert('Mohon ambil foto terlebih dahulu.'); return; }
-      // Validasi wajah
-      if (!isFaceDetected) {
-        alert('Foto tidak mengandung wajah yang jelas. Harap ambil foto dengan wajah menghadap kamera.');
+      if (!latitude || !longitude) {
+        alert('Mohon dapatkan lokasi terlebih dahulu.');
         return;
       }
+
+      const fileToUpload = window.capturedFile;
+      if (!fileToUpload) {
+        alert('Mohon ambil foto terlebih dahulu.');
+        return;
+      }
+
       submitBtn.disabled = true;
       loadingSpinner.style.display = 'block';
       submitText.textContent = 'Mengirim...';
+
       compressImage(fileToUpload, async function(compressedBlob) {
         const compressedFile = new File([compressedBlob], 'presensi.jpg', { type: 'image/jpeg', lastModified: Date.now() });
+
         const reader = new FileReader();
         reader.onload = async function(event) {
           const fileData = event.target.result.split(',')[1];
@@ -2094,21 +2145,30 @@
             namaPegawai: document.getElementById('namaPegawai').value,
             latitude: latitude,
             longitude: longitude,
-            file: { name: 'presensi.jpg', type: 'image/jpeg', data: fileData },
+            file: {
+              name: 'presensi.jpg',
+              type: 'image/jpeg',
+              data: fileData
+            },
             clientTime: document.getElementById('clientTime').value,
             timeDrift: document.getElementById('timeDrift').value,
             lastPresensiTime: document.getElementById('lastPresensiTime').value
           };
+
           try {
             const response = await fetch(`${PROXY_URL}?action=presensi`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(formData)
             });
+
             if (!response.ok) throw new Error(`HTTP error ${response.status}`);
+
             const result = await response.json();
-            if (result.success) showSuccessPopup();
-            else {
+
+            if (result.success) {
+              showSuccessPopup();
+            } else {
               messageEl.textContent = result.message;
               messageEl.classList.add('error');
               messageEl.style.display = 'block';
@@ -2132,24 +2192,40 @@
 
     document.getElementById('presensiForm').addEventListener('submit', function(e) {
       e.preventDefault();
-      if (!isValidPresensiTime()) { alert('Tidak dapat melakukan presensi di luar jam yang ditentukan.'); return; }
+      
+      if (!isValidPresensiTime()) {
+        alert('Tidak dapat melakukan presensi di luar jam yang ditentukan.');
+        return;
+      }
+      
       const latitude = parseFloat(document.getElementById('latitude').value);
       const longitude = parseFloat(document.getElementById('longitude').value);
       const sessionData = JSON.parse(localStorage.getItem('sessionData'));
-      if (!sessionData) { alert('Sesi tidak valid. Silakan login kembali.'); return; }
+      
+      if (!sessionData) {
+        alert('Sesi tidak valid. Silakan login kembali.');
+        return;
+      }
+      
       const lembagaLat = parseFloat(sessionData.lembagaLatitude);
       const lembagaLon = parseFloat(sessionData.lembagaLongitude);
       const radius = parseFloat(sessionData.lembagaRadius);
+      
       const distance = calculateDistance(latitude, longitude, lembagaLat, lembagaLon);
+      
       if (distance > radius) {
         showRadiusConfirmation(distance, radius, sessionData.namaLembaga);
-        document.getElementById('submitBtn').disabled = true;
+        const submitBtn = document.getElementById('submitBtn');
+        submitBtn.disabled = true;
         return;
       }
+      
       submitPresensiForm();
     });
 
-    setTimeout(() => { startCamera(); }, 3500);
+    setTimeout(() => {
+      startCamera();
+    }, 3500);
   </script>
 </body>
 </html>
