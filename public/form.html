@@ -2,13 +2,11 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Form Presensi Pegawai - Korwil Sine</title>
   <base target="_top">
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <!-- Face API Library for Face Detection -->
-  <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
   <style>
     /* ==================== FAKE GPS BLOCKER STYLES ==================== */
     #fakeGPSBlocker {
@@ -1118,22 +1116,6 @@
       border: 1px solid #e0e0e0;
     }
 
-    /* Face Detection Status */
-    .face-status {
-      background: rgba(0,0,0,0.7);
-      color: white;
-      padding: 6px 12px;
-      border-radius: 20px;
-      font-size: 0.8rem;
-      position: absolute;
-      bottom: 10px;
-      left: 50%;
-      transform: translateX(-50%);
-      z-index: 10;
-      white-space: nowrap;
-      pointer-events: none;
-    }
-
     /* ==================== LOCATION INFO STYLES ==================== */
     .location-info {
       background: #f8f9ff;
@@ -1516,14 +1498,15 @@
           <div class="alert alert-light p-2 mb-2" style="font-size: 0.9rem; border: 1px solid #eee;">
             <div class="mb-1">1. Foto harus Jelas Menampilkan Pegawai Yang Melakukan Presensi.</div>
             <div> 2. Hindari Foto background alam (pohon, dinding, pemandangan)</div>
-            <div> 3. Arahkan wajah ke kamera, sistem akan otomatis mengambil foto saat wajah terdeteksi.</div>
           </div>
           
-          <!-- Kamera preview dengan deteksi wajah otomatis -->
-          <div id="cameraPreview" style="margin: 15px 0; position: relative; display: none;">
+          <!-- Kamera preview langsung muncul -->
+          <div id="cameraPreview" style="margin: 15px 0; display: none;">
             <video id="video" autoplay playsinline style="width: 100%; border-radius: 12px; background: #000;"></video>
-            <div class="face-status" id="faceStatusText">
-              <i class="fas fa-spinner fa-spin"></i> Memuat deteksi wajah...
+            <div style="display: flex; justify-content: center; margin-top: 10px; gap: 10px;">
+              <button id="captureBtn" class="btn btn-primary" style="width: auto;">
+                <i class="fas fa-camera"></i> Ambil Foto
+              </button>
             </div>
           </div>
           
@@ -1533,8 +1516,8 @@
           <!-- Image Preview Container -->
           <div id="imagePreviewContainer" class="image-preview-container">
             <img id="imagePreview" class="image-preview">
-            <button id="retakeBtn" class="btn btn-primary" style="margin-top: 10px; width: 100%;">
-              <i class="fas fa-camera"></i> Ambil Ulang Foto
+            <button id="retakeBtn" class="btn btn-secondary" style="margin-top: 10px; width: 100%;">
+              <i class="fas fa-camera"></i> Ambil Ulang
             </button>
           </div>
         </div>
@@ -1584,20 +1567,17 @@
     // Proxy URL (relatif)
     const PROXY_URL = '/api/proxy';
 
-    // ==================== FACE DETECTION AUTO CAPTURE ====================
+    // ==================== KAMERA DEPAN OTOMATIS ====================
     const video = document.getElementById('video');
     const canvas = document.getElementById('canvas');
     const photoData = document.getElementById('photoData');
+    const captureBtn = document.getElementById('captureBtn');
     const cameraPreview = document.getElementById('cameraPreview');
     const imagePreview = document.getElementById('imagePreview');
     const imagePreviewContainer = document.getElementById('imagePreviewContainer');
     const retakeBtn = document.getElementById('retakeBtn');
-    const faceStatusText = document.getElementById('faceStatusText');
     
     let stream = null;
-    let detectionInterval = null;
-    let captureTriggered = false;
-    let modelsLoaded = false;
     
     function dataURLtoBlob(dataUrl) {
       const arr = dataUrl.split(',');
@@ -1611,77 +1591,7 @@
       return new Blob([u8arr], { type: mime });
     }
     
-    // Load face-api models from official CDN (tiny face detector)
-    async function loadFaceModels() {
-      try {
-        faceStatusText.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Memuat model deteksi wajah...';
-        // Use tiny face detector which is lighter and faster
-        await faceapi.nets.tinyFaceDetector.loadFromUri('https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/weights');
-        modelsLoaded = true;
-        faceStatusText.innerHTML = '<i class="fas fa-smile-wink"></i> Arahkan wajah ke kamera';
-        console.log('Face detection models loaded successfully');
-      } catch (err) {
-        console.error('Error loading face models:', err);
-        faceStatusText.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Gagal muat model, coba refresh halaman';
-        // Retry after 2 seconds
-        setTimeout(loadFaceModels, 2000);
-      }
-    }
-    
-    // Start face detection loop
-    function startFaceDetection() {
-      if (detectionInterval) clearInterval(detectionInterval);
-      detectionInterval = setInterval(async () => {
-        if (!modelsLoaded || captureTriggered || !video.srcObject || video.paused || video.ended) return;
-        if (video.readyState !== 4) return;
-        
-        try {
-          const detections = await faceapi.detectAllFaces(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.5 }));
-          if (detections.length > 0 && !captureTriggered) {
-            // Face detected, trigger capture
-            captureTriggered = true;
-            faceStatusText.innerHTML = '<i class="fas fa-camera"></i> Wajah terdeteksi! Mengambil foto...';
-            performAutoCapture();
-          } else if (detections.length === 0 && !captureTriggered) {
-            faceStatusText.innerHTML = '<i class="fas fa-meh-blank"></i> Tidak ada wajah terdeteksi';
-          }
-        } catch (err) {
-          console.error('Face detection error:', err);
-        }
-      }, 800); // check every 800ms
-    }
-    
-    function performAutoCapture() {
-      // Capture from video stream
-      const context = canvas.getContext('2d');
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      // Apply mirror effect to match preview
-      context.translate(canvas.width, 0);
-      context.scale(-1, 1);
-      context.drawImage(video, 0, 0, canvas.width, canvas.height);
-      const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
-      imagePreview.src = dataUrl;
-      photoData.value = dataUrl;
-      imagePreviewContainer.style.display = 'block';
-      
-      // Stop camera stream and detection
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
-        stream = null;
-      }
-      if (detectionInterval) {
-        clearInterval(detectionInterval);
-        detectionInterval = null;
-      }
-      cameraPreview.style.display = 'none';
-      
-      // Create file object for upload
-      const blob = dataURLtoBlob(dataUrl);
-      window.capturedFile = new File([blob], "presensi.jpg", {type: 'image/jpeg'});
-    }
-    
-    async function startCameraWithFaceDetection() {
+    async function startCamera() {
       try {
         const constraints = {
           video: {
@@ -1693,36 +1603,41 @@
         stream = await navigator.mediaDevices.getUserMedia(constraints);
         video.srcObject = stream;
         cameraPreview.style.display = 'block';
+        captureBtn.style.display = 'block';
         video.classList.add('mirror-mode');
-        
-        // Wait for video to be ready
-        video.onloadedmetadata = () => {
-          video.play();
-          startFaceDetection();
-        };
       } catch (err) {
         console.error("Error mengakses kamera:", err);
         alert('Tidak dapat mengakses kamera. Pastikan Anda memberikan izin.');
-        faceStatusText.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Izin kamera ditolak';
       }
     }
     
-    // Reset function for retake
-    function resetCameraForRetake() {
-      // Clear captured flag and data
-      captureTriggered = false;
-      imagePreviewContainer.style.display = 'none';
-      photoData.value = '';
-      window.capturedFile = null;
-      
-      // Re-initialize camera with face detection
-      startCameraWithFaceDetection();
-    }
-    
-    retakeBtn.addEventListener('click', function() {
-      resetCameraForRetake();
+    captureBtn.addEventListener('click', function() {
+      captureBtn.style.display = 'none';
+      const context = canvas.getContext('2d');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      context.translate(canvas.width, 0);
+      context.scale(-1, 1);
+      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+      imagePreview.src = dataUrl;
+      photoData.value = dataUrl;
+      imagePreviewContainer.style.display = 'block';
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+        stream = null;
+      }
+      cameraPreview.style.display = 'none';
+      const blob = dataURLtoBlob(dataUrl);
+      window.capturedFile = new File([blob], "presensi.jpg", {type: 'image/jpeg'});
     });
-    
+
+    retakeBtn.addEventListener('click', function() {
+      imagePreviewContainer.style.display = 'none';
+      cameraPreview.style.display = 'block';
+      startCamera();
+    });
+
     // ==================== ENHANCED FAKE GPS DETECTION ====================
     function detectFakeGPS(position) {
       if (typeof position.mocked !== 'undefined' && position.mocked) return true;
@@ -1814,12 +1729,6 @@
     let watchID = null;
     
     async function initializeApp() {
-      // Load face detection models first then start camera
-      await loadFaceModels();
-      setTimeout(() => {
-        startCameraWithFaceDetection();
-      }, 500);
-      
       document.getElementById('logoutButton').addEventListener('click', showLogoutModal);
       document.querySelector('.modal-btn.cancel').addEventListener('click', closeModal);
       document.querySelector('.modal-btn.logout').addEventListener('click', confirmLogout);
@@ -1970,7 +1879,7 @@
     }
     
     const PRESENSI_DATANG_START = 6;
-    const PRESENSI_DATANG_END = 11;
+    const PRESENSI_DATANG_END = 8;
     const PRESENSI_PULANG_START = 14;
     const PRESENSI_PULANG_END = 19.5;
     
@@ -2127,15 +2036,15 @@
       reader.onload = function(e) {
         const img = new Image();
         img.onload = function() {
-          const canvasComp = document.createElement('canvas');
-          const ctx = canvasComp.getContext('2d');
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
           const MAX_WIDTH = 800;
           const scale = MAX_WIDTH / img.width;
           const height = img.height * scale;
-          canvasComp.width = MAX_WIDTH;
-          canvasComp.height = height;
+          canvas.width = MAX_WIDTH;
+          canvas.height = height;
           ctx.drawImage(img, 0, 0, MAX_WIDTH, height);
-          canvasComp.toBlob(function(blob) {
+          canvas.toBlob(function(blob) {
             callback(blob);
           }, 'image/jpeg', 0.7);
         };
@@ -2215,7 +2124,7 @@
 
       const fileToUpload = window.capturedFile;
       if (!fileToUpload) {
-        alert('Mohon ambil foto terlebih dahulu (wajah akan terdeteksi otomatis).');
+        alert('Mohon ambil foto terlebih dahulu.');
         return;
       }
 
@@ -2313,6 +2222,10 @@
       
       submitPresensiForm();
     });
+
+    setTimeout(() => {
+      startCamera();
+    }, 3500);
   </script>
 </body>
 </html>
