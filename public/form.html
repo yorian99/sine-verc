@@ -1611,19 +1611,19 @@
       return new Blob([u8arr], { type: mime });
     }
     
-    // Load face-api models
+    // Load face-api models from official CDN (tiny face detector)
     async function loadFaceModels() {
       try {
         faceStatusText.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Memuat model deteksi wajah...';
-        await faceapi.nets.tinyFaceDetector.loadFromUri('/models');
-        // fallback if models not found, use alternative detection? but we assume models are available.
+        // Use tiny face detector which is lighter and faster
+        await faceapi.nets.tinyFaceDetector.loadFromUri('https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/weights');
         modelsLoaded = true;
         faceStatusText.innerHTML = '<i class="fas fa-smile-wink"></i> Arahkan wajah ke kamera';
-        console.log('Face detection models loaded');
+        console.log('Face detection models loaded successfully');
       } catch (err) {
         console.error('Error loading face models:', err);
-        faceStatusText.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Gagal muat model, gunakan tombol manual?';
-        // fallback: we could still provide manual capture but requirement is auto. We'll retry.
+        faceStatusText.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Gagal muat model, coba refresh halaman';
+        // Retry after 2 seconds
         setTimeout(loadFaceModels, 2000);
       }
     }
@@ -1644,8 +1644,6 @@
             performAutoCapture();
           } else if (detections.length === 0 && !captureTriggered) {
             faceStatusText.innerHTML = '<i class="fas fa-meh-blank"></i> Tidak ada wajah terdeteksi';
-          } else if (detections.length > 0 && captureTriggered) {
-            // Already captured, no action
           }
         } catch (err) {
           console.error('Face detection error:', err);
