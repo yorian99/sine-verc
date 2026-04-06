@@ -161,6 +161,24 @@
       cursor: not-allowed;
     }
 
+    /* Tombol PSW baru - tidak mengubah elemen lain */
+    .btn-psw {
+      background: transparent;
+      border: 1.5px solid var(--primary);
+      color: var(--primary);
+      text-decoration: none;
+      margin-top: 16px;
+      transition: var(--transition);
+    }
+
+    .btn-psw:hover {
+      background: var(--primary);
+      color: white;
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(67, 97, 238, 0.2);
+      text-decoration: none;
+    }
+
     .spinner {
       display: none;
       width: 24px;
@@ -293,6 +311,12 @@
       <div id="message"></div>
       <a href="#" id="forgotPasswordLink">Lupa Password?</a>
     </form>
+
+    <!-- TOMBOL PSW DENGAN LINK - TIDAK MENGUBAH ELEMEN LAIN -->
+    <a href="https://presensi-korwilsine.vercel.app/" target="_blank" rel="noopener noreferrer" class="btn btn-psw">
+      <i class="fas fa-key"></i> PSW
+    </a>
+
     <div class="footer">© 2026 Sistem Presensi ASN Korwil Sine</div>
   </div>
 
@@ -463,4 +487,3 @@
   </script>
 </body>
 </html>
-```
