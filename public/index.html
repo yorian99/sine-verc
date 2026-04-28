@@ -80,56 +80,8 @@
 
     .subtitle {
       color: var(--gray);
-      margin-bottom: 20px;
-      font-size: 1.2rem;
-    }
-
-    /* Info Kedip & Tautan */
-    .announcement-box {
-      background-color: #fff5f5;
-      border: 1px dashed var(--danger);
-      padding: 15px;
-      border-radius: 10px;
-      margin-bottom: 25px;
-      text-align: center;
-    }
-
-    .blink-text {
-      color: var(--danger);
-      font-weight: 700;
-      font-size: 0.9rem;
-      animation: blinker 1s linear infinite;
-      display: block;
-      margin-bottom: 5px;
-    }
-
-    .info-text {
-      font-size: 0.85rem;
-      color: #444;
-      line-height: 1.5;
-    }
-
-    .site-link {
-      display: inline-block;
-      margin-top: 8px;
-      color: var(--primary);
-      font-weight: 600;
-      text-decoration: underline;
-      word-break: break-all;
-      background: #f0f3ff;
-      padding: 8px 12px;
-      border-radius: 6px;
-      transition: var(--transition);
-    }
-
-    .site-link:hover {
-      background: var(--primary);
-      color: white;
-      text-decoration: none;
-    }
-
-    @keyframes blinker {
-      50% { opacity: 0; }
+      margin-bottom: 30px;
+      font-size: 1.5rem;
     }
 
     .form-group {
@@ -190,6 +142,7 @@
       align-items: center;
       justify-content: center;
       gap: 8px;
+      text-decoration: none;
     }
 
     .btn-primary {
@@ -197,7 +150,14 @@
       color: white;
     }
 
-    .btn-primary:hover {
+    .btn-outline {
+      background: white;
+      color: var(--primary);
+      border: 2px solid var(--primary);
+      margin-top: 15px;
+    }
+
+    .btn-primary:hover, .btn-outline:hover {
       transform: translateY(-2px);
       box-shadow: 0 5px 15px rgba(67, 97, 238, 0.3);
     }
@@ -319,21 +279,6 @@
     <h2>Presensi Pegawai</h2>
     <p class="subtitle">Korwil Kecamatan Sine</p>
 
-    <!-- Kotak Pengumuman Kedip -->
-    <div class="announcement-box">
-      <span class="blink-text"><i class="fas fa-exclamation-triangle"></i> INFORMASI TERBARU</span>
-      <p class="info-text">
-        Untuk monitoring presensi dan pengajuan PSW, silakan buka alamat domain baru di browser Anda:
-      </p>
-      <!-- Target _blank memastikan link terbuka di browser utama/tab baru -->
-      <a href="https://yoriapp.site/e-presensi" class="site-link" target="_blank" rel="noopener noreferrer">
-        <i class="fas fa-external-link-alt"></i> yoriapp.site/e-presensi
-      </a>
-      <p class="info-text" style="margin-top: 10px; font-style: italic; font-size: 0.75rem;">
-        Mohon maaf atas ketidaknyamanan ini.
-      </p>
-    </div>
-
     <form id="loginForm">
       <div class="form-group">
         <label for="username">Username / NIP</label>
@@ -353,6 +298,13 @@
         <div id="loadingSpinner" class="spinner"></div>
         <span id="loginText">Login</span>
       </button>
+      
+      <!-- Tombol Baru: E-Monitoring & PSW -->
+      <a href="https://yoriapp.site/e-presensi" class="btn btn-outline">
+        <i class="fas fa-desktop"></i>
+        <span>E-Monitoring & PSW</span>
+      </a>
+
       <div id="message"></div>
       <a href="#" id="forgotPasswordLink">Lupa Password?</a>
     </form>
@@ -377,6 +329,10 @@
           <input type="password" id="newPassword" placeholder="Masukkan kata sandi baru" required>
         </div>
       </div>
+      
+      <!-- File Input Mockup Note: To ensure it doesn't open camera, 
+           never use 'capture' attribute in your form.html inputs -->
+      
       <button type="button" id="resetPasswordBtn" class="btn btn-primary">
         <div id="resetLoadingSpinner" class="spinner"></div>
         <span id="resetBtnText">Reset Sandi</span>
