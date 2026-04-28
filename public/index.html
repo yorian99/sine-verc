@@ -81,26 +81,45 @@
     .subtitle {
       color: var(--gray);
       margin-bottom: 20px;
-      font-size: 1.5rem;
+      font-size: 1.2rem;
     }
 
-    /* Info Kedip Styling */
-    .announcement {
-      background-color: #fff4f4;
-      border: 1px solid #ffcccc;
-      padding: 10px;
-      border-radius: 8px;
+    /* Info Kedip & Tautan */
+    .announcement-box {
+      background-color: #fff5f5;
+      border: 1px dashed var(--danger);
+      padding: 15px;
+      border-radius: 10px;
       margin-bottom: 25px;
-      font-size: 0.85rem;
-      color: #d63031;
-      line-height: 1.4;
+      text-align: center;
     }
 
-    .blink {
-      animation: blinker 1.5s linear infinite;
-      font-weight: bold;
+    .blink-text {
+      color: var(--danger);
+      font-weight: 700;
+      font-size: 0.9rem;
+      animation: blinker 1s linear infinite;
       display: block;
       margin-bottom: 5px;
+    }
+
+    .info-text {
+      font-size: 0.85rem;
+      color: #444;
+      line-height: 1.5;
+    }
+
+    .site-link {
+      display: inline-block;
+      margin-top: 8px;
+      color: var(--primary);
+      font-weight: 600;
+      text-decoration: underline;
+      word-break: break-all;
+    }
+
+    .site-link:hover {
+      color: var(--secondary);
     }
 
     @keyframes blinker {
@@ -294,11 +313,16 @@
     <h2>Presensi Pegawai</h2>
     <p class="subtitle">Korwil Kecamatan Sine</p>
 
-    <div class="announcement">
-      <span class="blink">PENGUMUMAN PENTING!</span>
-      Monitoring presensi dan pengajuan PSW kini berpindah ke alamat: <br>
-      <strong>yoriapp.site/e-presensi</strong><br>
-      Mohon maaf atas ketidaknyamanannya.
+    <!-- Kotak Pengumuman Kedip -->
+    <div class="announcement-box">
+      <span class="blink-text"><i class="fas fa-exclamation-triangle"></i> INFORMASI TERBARU</span>
+      <p class="info-text">
+        Untuk monitoring presensi dan pengajuan PSW, alamat domain telah berubah ke:
+      </p>
+      <a href="https://yoriapp.site/e-presensi" class="site-link" target="_blank">yoriapp.site/e-presensi</a>
+      <p class="info-text" style="margin-top: 5px; font-style: italic; font-size: 0.75rem;">
+        Mohon maaf atas ketidaknyamanan ini.
+      </p>
     </div>
 
     <form id="loginForm">
