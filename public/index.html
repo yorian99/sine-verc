@@ -116,10 +116,16 @@
       font-weight: 600;
       text-decoration: underline;
       word-break: break-all;
+      background: #f0f3ff;
+      padding: 8px 12px;
+      border-radius: 6px;
+      transition: var(--transition);
     }
 
     .site-link:hover {
-      color: var(--secondary);
+      background: var(--primary);
+      color: white;
+      text-decoration: none;
     }
 
     @keyframes blinker {
@@ -317,10 +323,13 @@
     <div class="announcement-box">
       <span class="blink-text"><i class="fas fa-exclamation-triangle"></i> INFORMASI TERBARU</span>
       <p class="info-text">
-        Untuk monitoring presensi dan pengajuan PSW, alamat domain telah berubah ke:
+        Untuk monitoring presensi dan pengajuan PSW, silakan buka alamat domain baru di browser Anda:
       </p>
-      <a href="https://yoriapp.site/e-presensi" class="site-link" target="_blank">yoriapp.site/e-presensi</a>
-      <p class="info-text" style="margin-top: 5px; font-style: italic; font-size: 0.75rem;">
+      <!-- Target _blank memastikan link terbuka di browser utama/tab baru -->
+      <a href="https://yoriapp.site/e-presensi" class="site-link" target="_blank" rel="noopener noreferrer">
+        <i class="fas fa-external-link-alt"></i> yoriapp.site/e-presensi
+      </a>
+      <p class="info-text" style="margin-top: 10px; font-style: italic; font-size: 0.75rem;">
         Mohon maaf atas ketidaknyamanan ini.
       </p>
     </div>
