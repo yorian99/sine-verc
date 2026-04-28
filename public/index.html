@@ -80,8 +80,31 @@
 
     .subtitle {
       color: var(--gray);
-      margin-bottom: 30px;
+      margin-bottom: 20px;
       font-size: 1.5rem;
+    }
+
+    /* Info Kedip Styling */
+    .announcement {
+      background-color: #fff4f4;
+      border: 1px solid #ffcccc;
+      padding: 10px;
+      border-radius: 8px;
+      margin-bottom: 25px;
+      font-size: 0.85rem;
+      color: #d63031;
+      line-height: 1.4;
+    }
+
+    .blink {
+      animation: blinker 1.5s linear infinite;
+      font-weight: bold;
+      display: block;
+      margin-bottom: 5px;
+    }
+
+    @keyframes blinker {
+      50% { opacity: 0; }
     }
 
     .form-group {
@@ -250,7 +273,7 @@
       to { opacity: 1; transform: translateY(0); }
     }
 
-    #forgotPasswordLink, .external-link {
+    #forgotPasswordLink {
       display: block;
       margin-top: 15px;
       color: var(--primary);
@@ -259,7 +282,7 @@
       font-weight: 500;
     }
 
-    #forgotPasswordLink:hover, .external-link:hover {
+    #forgotPasswordLink:hover {
       color: var(--primary-dark);
       text-decoration: underline;
     }
@@ -270,6 +293,13 @@
     <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/c/c8/Lambang_Kabupaten_Ngawi_%28svg%29.svg/500px-Lambang_Kabupaten_Ngawi_%28svg%29.svg.png" alt="Logo Kabupaten" class="logo">
     <h2>Presensi Pegawai</h2>
     <p class="subtitle">Korwil Kecamatan Sine</p>
+
+    <div class="announcement">
+      <span class="blink">PENGUMUMAN PENTING!</span>
+      Monitoring presensi dan pengajuan PSW kini berpindah ke alamat: <br>
+      <strong>yoriapp.site/e-presensi</strong><br>
+      Mohon maaf atas ketidaknyamanannya.
+    </div>
 
     <form id="loginForm">
       <div class="form-group">
@@ -292,7 +322,6 @@
       </button>
       <div id="message"></div>
       <a href="#" id="forgotPasswordLink">Lupa Password?</a>
-      <a href="https://www.yoriapp.site/e-presensi" target="_blank" class="external-link">Buka Portal E-Presensi Utama</a>
     </form>
     <div class="footer">© 2026 Sistem Presensi ASN Korwil Sine</div>
   </div>
