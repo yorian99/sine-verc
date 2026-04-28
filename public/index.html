@@ -84,6 +84,66 @@
       font-size: 1.5rem;
     }
 
+    /* Info Bar Keren Kedip */
+    .info-bar {
+      background: #fff5f8;
+      border: 2px dashed var(--danger);
+      padding: 15px;
+      border-radius: var(--border-radius);
+      margin-top: 25px; /* Margin top karena sekarang di bawah */
+      animation: blink-border 1.5s infinite;
+    }
+
+    .info-title {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--danger);
+      margin-bottom: 5px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .info-link-container {
+      display: flex;
+      background: white;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      overflow: hidden;
+      margin-top: 8px;
+    }
+
+    .info-url {
+      flex: 1;
+      padding: 8px 12px;
+      font-size: 0.85rem;
+      color: var(--primary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      text-align: left;
+      font-weight: 500;
+    }
+
+    .copy-btn {
+      background: var(--primary);
+      color: white;
+      border: none;
+      padding: 8px 12px;
+      cursor: pointer;
+      font-size: 0.8rem;
+      transition: var(--transition);
+    }
+
+    .copy-btn:hover {
+      background: var(--primary-dark);
+    }
+
+    @keyframes blink-border {
+      0% { border-color: var(--danger); box-shadow: 0 0 0px rgba(247, 37, 133, 0); }
+      50% { border-color: var(--primary); box-shadow: 0 0 10px rgba(67, 97, 238, 0.2); }
+      100% { border-color: var(--danger); box-shadow: 0 0 0px rgba(247, 37, 133, 0); }
+    }
+
     .form-group {
       margin-bottom: 20px;
       text-align: left;
@@ -142,7 +202,6 @@
       align-items: center;
       justify-content: center;
       gap: 8px;
-      text-decoration: none;
     }
 
     .btn-primary {
@@ -150,14 +209,7 @@
       color: white;
     }
 
-    .btn-outline {
-      background: white;
-      color: var(--primary);
-      border: 2px solid var(--primary);
-      margin-top: 15px;
-    }
-
-    .btn-primary:hover, .btn-outline:hover {
+    .btn-primary:hover {
       transform: translateY(-2px);
       box-shadow: 0 5px 15px rgba(67, 97, 238, 0.3);
     }
@@ -271,6 +323,29 @@
       color: var(--primary-dark);
       text-decoration: underline;
     }
+    
+    /* Toast Notification */
+    #toast {
+      visibility: hidden;
+      min-width: 200px;
+      background-color: #333;
+      color: #fff;
+      text-align: center;
+      border-radius: 8px;
+      padding: 10px;
+      position: fixed;
+      z-index: 2000;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 0.85rem;
+    }
+    #toast.show {
+      visibility: visible;
+      animation: fadein 0.5s, fadeout 0.5s 2.5s;
+    }
+    @keyframes fadein { from {bottom: 0; opacity: 0;} to {bottom: 30px; opacity: 1;} }
+    @keyframes fadeout { from {bottom: 30px; opacity: 1;} to {bottom: 0; opacity: 0;} }
   </style>
 </head>
 <body>
@@ -298,19 +373,26 @@
         <div id="loadingSpinner" class="spinner"></div>
         <span id="loginText">Login</span>
       </button>
-      
-      <!-- Tombol Baru: E-Monitoring & PSW -->
-      <a href="https://yoriapp.site/e-presensi" class="btn btn-outline">
-        <i class="fas fa-desktop"></i>
-        <span>E-Monitoring & PSW</span>
-      </a>
-
       <div id="message"></div>
       <a href="#" id="forgotPasswordLink">Lupa Password?</a>
     </form>
+
+    <!-- Info E-Monitoring & Alamat Baru (Sekarang DIBAWAH form login) -->
+    <div class="info-bar">
+      <div class="info-title"><i class="fas fa-bullhorn"></i> E-MONITORING & PENGAJUAN PSW</div>
+      <p style="font-size: 0.75rem; color: #555;">Situs/Domain telah berubah ke:</p>
+      <div class="info-link-container">
+        <div class="info-url" id="newUrl">yoriapp.site/e-presensi</div>
+        <button class="copy-btn" id="copyUrlBtn" title="Salin Link">
+          <i class="fas fa-copy"></i>
+        </button>
+      </div>
+    </div>
+
     <div class="footer">© 2026 Sistem Presensi ASN Korwil Sine</div>
   </div>
 
+  <!-- Reset Password Modal -->
   <div id="forgotPasswordModal" class="modal">
     <div class="modal-content">
       <span class="close-button">&times;</span>
@@ -329,10 +411,6 @@
           <input type="password" id="newPassword" placeholder="Masukkan kata sandi baru" required>
         </div>
       </div>
-      
-      <!-- File Input Mockup Note: To ensure it doesn't open camera, 
-           never use 'capture' attribute in your form.html inputs -->
-      
       <button type="button" id="resetPasswordBtn" class="btn btn-primary">
         <div id="resetLoadingSpinner" class="spinner"></div>
         <span id="resetBtnText">Reset Sandi</span>
@@ -341,10 +419,10 @@
     </div>
   </div>
 
-  <script>
-    // Proxy URL (relatif)
-    const PROXY_URL = '/api/proxy';
+  <div id="toast">Tautan berhasil disalin!</div>
 
+  <script>
+    const PROXY_URL = '/api/proxy';
     const loginForm = document.getElementById('loginForm');
     const usernameInput = document.getElementById('username');
     const passwordInput = document.getElementById('password');
@@ -353,7 +431,6 @@
     const loadingSpinner = document.getElementById('loadingSpinner');
     const loginText = document.getElementById('loginText');
 
-    // Forgot Password elements
     const forgotPasswordLink = document.getElementById('forgotPasswordLink');
     const forgotPasswordModal = document.getElementById('forgotPasswordModal');
     const closeButton = document.querySelector('.close-button');
@@ -364,17 +441,30 @@
     const resetBtnText = document.getElementById('resetBtnText');
     const resetMessageEl = document.getElementById('resetMessage');
 
+    // Fitur Salin Link
+    document.getElementById('copyUrlBtn').addEventListener('click', function() {
+      const textToCopy = document.getElementById('newUrl').innerText;
+      const dummy = document.createElement("textarea");
+      document.body.appendChild(dummy);
+      dummy.value = textToCopy;
+      dummy.select();
+      document.execCommand("copy");
+      document.body.removeChild(dummy);
+      
+      const toast = document.getElementById("toast");
+      toast.className = "show";
+      setTimeout(function(){ toast.className = toast.className.replace("show", ""); }, 3000);
+    });
+
     window.onload = () => {
       usernameInput.focus();
       localStorage.removeItem('sessionId');
     };
 
-    // LOGIN
     loginForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       messageEl.textContent = '';
       messageEl.className = '';
-
       loginBtn.disabled = true;
       loadingSpinner.style.display = 'block';
       loginText.textContent = 'Memproses...';
@@ -388,11 +478,7 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ username, password })
         });
-
-        if (!response.ok) {
-          throw new Error(`HTTP error ${response.status}`);
-        }
-
+        if (!response.ok) throw new Error(`HTTP error ${response.status}`);
         const data = await response.json();
 
         if (data.success) {
@@ -408,7 +494,6 @@
           passwordInput.focus();
         }
       } catch (err) {
-        console.error('Fetch error:', err);
         messageEl.textContent = 'Terjadi kesalahan: ' + err.message;
         messageEl.classList.add('error');
       } finally {
@@ -418,7 +503,6 @@
       }
     });
 
-    // Forgot Password
     forgotPasswordLink.addEventListener('click', (e) => {
       e.preventDefault();
       forgotPasswordModal.style.display = 'flex';
@@ -438,7 +522,6 @@
     resetPasswordBtn.addEventListener('click', async () => {
       resetMessageEl.textContent = '';
       resetMessageEl.className = '';
-
       const username = resetUsernameInput.value.trim();
       const newPass = newPasswordInput.value;
 
@@ -458,14 +541,11 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ username, newPassword: newPass })
         });
-
         const data = await response.json();
         if (data.success) {
           resetMessageEl.textContent = data.message;
           resetMessageEl.classList.add('success');
-          setTimeout(() => {
-            forgotPasswordModal.style.display = 'none';
-          }, 2000);
+          setTimeout(() => { forgotPasswordModal.style.display = 'none'; }, 2000);
         } else {
           resetMessageEl.textContent = data.message;
           resetMessageEl.classList.add('error');
