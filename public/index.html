@@ -18,6 +18,7 @@
       --light: #f8f9fa;
       --dark: #212529;
       --gray: #6c757d;
+      --status-green: #2ecc71;
       --border-radius: 12px;
       --box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
       --transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
@@ -50,6 +51,48 @@
       position: relative;
       overflow: hidden;
       z-index: 1;
+    }
+
+    /* Badge Server Id dengan Indikator Kedip Hijau */
+    .server-badge {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      background: #f0fff4;
+      padding: 5px 12px;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--status-green);
+      border: 1px solid #c6f6d5;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .dot {
+      height: 8px;
+      width: 8px;
+      background-color: var(--status-green);
+      border-radius: 50%;
+      display: inline-block;
+      animation: pulse-green 2s infinite;
+    }
+
+    @keyframes pulse-green {
+      0% {
+        transform: scale(0.95);
+        box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.7);
+      }
+      70% {
+        transform: scale(1);
+        box-shadow: 0 0 0 6px rgba(46, 204, 113, 0);
+      }
+      100% {
+        transform: scale(0.95);
+        box-shadow: 0 0 0 0 rgba(46, 204, 113, 0);
+      }
     }
 
     .login-container::before {
@@ -90,7 +133,7 @@
       border: 2px dashed var(--danger);
       padding: 15px;
       border-radius: var(--border-radius);
-      margin-top: 25px; /* Margin top karena sekarang di bawah */
+      margin-top: 25px;
       animation: blink-border 1.5s infinite;
     }
 
@@ -350,6 +393,10 @@
 </head>
 <body>
   <div class="login-container">
+    <div class="server-badge">
+      <span class="dot"></span>
+      Id Server : yorSINE 1
+    </div>
     <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/c/c8/Lambang_Kabupaten_Ngawi_%28svg%29.svg/500px-Lambang_Kabupaten_Ngawi_%28svg%29.svg.png" alt="Logo Kabupaten" class="logo">
     <h2>Presensi Pegawai</h2>
     <p class="subtitle">Korwil Kecamatan Sine</p>
@@ -377,10 +424,10 @@
       <a href="#" id="forgotPasswordLink">Lupa Password?</a>
     </form>
 
-    <!-- Info E-Monitoring & Alamat Baru (Sekarang DIBAWAH form login) -->
+    <!-- Info E-Monitoring & Alamat Baru -->
     <div class="info-bar">
       <div class="info-title"><i class="fas fa-bullhorn"></i> E-MONITORING & PENGAJUAN PSW</div>
-      <p style="font-size: 0.75rem; color: #555;">Situs/Domain telah berubah ke:</p>
+      <p style="font-size: 0.75rem; color: #555;">Silahkan Salin / Ketik Link dibawah ini untuk melakukan monitoring dan pengajuan PSW:</p>
       <div class="info-link-container">
         <div class="info-url" id="newUrl">yoriapp.site/e-presensi</div>
         <button class="copy-btn" id="copyUrlBtn" title="Salin Link">
