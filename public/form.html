@@ -1170,7 +1170,7 @@
       color: var(--secondary);
     }
 
-    /* ==================== BORDER SELFIE AREA (BARU) ==================== */
+    /* ==================== BORDER SELFIE AREA (DIPERBESAR) ==================== */
     .camera-wrapper {
       position: relative;
       display: inline-block;
@@ -1189,8 +1189,8 @@
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      width: 200px;
-      height: 200px;
+      width: 260px;
+      height: 260px;
       border-radius: 50%;
       border: 3px solid #ffffff;
       box-shadow: 0 0 0 100vmax rgba(0, 0, 0, 0.5), 0 0 0 3px rgba(255,255,255,0.3);
@@ -1215,8 +1215,8 @@
 
     @media (max-width: 480px) {
       .selfie-border {
-        width: 160px;
-        height: 160px;
+        width: 220px;
+        height: 220px;
       }
       .selfie-border::before {
         font-size: 10px;
@@ -1231,6 +1231,9 @@
       margin-top: 8px;
       text-align: center;
       display: none;
+      background: rgba(0,0,0,0.6);
+      padding: 6px;
+      border-radius: 20px;
     }
 
     @media (max-width: 480px) {
@@ -1563,26 +1566,21 @@
             <div> 2. Hindari Foto background alam (pohon, dinding, pemandangan)</div>
           </div>
           
-          <!-- Kamera preview langsung muncul dengan border area selfie -->
+          <!-- Kamera preview dengan border area selfie (TOMbol AMBIL FOTO DIHILANGKAN) -->
           <div id="cameraPreview" style="margin: 15px 0; display: none;">
             <div class="camera-wrapper">
               <video id="video" autoplay playsinline style="width: 100%; border-radius: 12px; background: #000;"></video>
               <div class="selfie-border"></div>
             </div>
-            <div style="display: flex; justify-content: center; margin-top: 10px; gap: 10px;">
-              <button id="captureBtn" class="btn btn-primary" style="width: auto;">
-                <i class="fas fa-camera"></i> Ambil Foto
-              </button>
-            </div>
             <div id="cameraWarning" class="camera-warning">
-              <i class="fas fa-exclamation-triangle"></i> Pastikan wajah Anda berada di dalam lingkaran!
+              <i class="fas fa-exclamation-triangle"></i> Silakan tepatkan wajah di dalam lingkaran
             </div>
           </div>
           
           <canvas id="canvas" style="display: none;"></canvas>
           <input type="hidden" id="photoData" name="photoData">
           
-          <!-- Image Preview Container -->
+          <!-- Image Preview Container (tetap ada untuk preview setelah capture otomatis) -->
           <div id="imagePreviewContainer" class="image-preview-container">
             <img id="imagePreview" class="image-preview">
             <button id="retakeBtn" class="btn btn-secondary" style="margin-top: 10px; width: 100%;">
@@ -1622,7 +1620,7 @@
           </div>
         </div>
 
-        <button type="submit" id="submitBtn" class="btn btn-primary">
+        <button type="submit" id="submitBtn" class="btn btn-primary" style="display: none;"> <!-- Tombol submit disembunyikan, karena otomatis -->
           <div id="loadingSpinner" class="spinner"></div>
           <span id="submitText">Kirim Presensi</span>
         </button>
@@ -1636,11 +1634,10 @@
     // Proxy URL (relatif)
     const PROXY_URL = '/api/proxy';
 
-    // ==================== KAMERA DEPAN OTOMATIS DENGAN VALIDASI AREA SELFIE ====================
+    // ==================== KAMERA DEPAN OTOMATIS DENGAN DETEKSI WAJAH OTOMATIS ====================
     const video = document.getElementById('video');
     const canvas = document.getElementById('canvas');
     const photoData = document.getElementById('photoData');
-    const captureBtn = document.getElementById('captureBtn');
     const cameraPreview = document.getElementById('cameraPreview');
     const imagePreview = document.getElementById('imagePreview');
     const imagePreviewContainer = document.getElementById('imagePreviewContainer');
@@ -1648,7 +1645,8 @@
     const cameraWarning = document.getElementById('cameraWarning');
     
     let stream = null;
-    let selfieValid = false;
+    let autoCaptureInterval = null;
+    let presensiSent = false; // flag agar tidak mengirim berulang
     
     function dataURLtoBlob(dataUrl) {
       const arr = dataUrl.split(',');
@@ -1662,33 +1660,31 @@
       return new Blob([u8arr], { type: mime });
     }
     
-    // Fungsi untuk mengecek apakah area border (lingkaran) terisi dengan baik
+    // Fungsi untuk mengecek apakah area border (lingkaran) terisi dengan baik (wajah terdeteksi)
     function isBorderAreaFilled(videoElement) {
       const tempCanvas = document.createElement('canvas');
       const ctx = tempCanvas.getContext('2d');
-      // Ambil dimensi video
       const vw = videoElement.videoWidth;
       const vh = videoElement.videoHeight;
       if (vw === 0 || vh === 0) return false;
       tempCanvas.width = vw;
       tempCanvas.height = vh;
-      // Gambar video dengan mirroring (agar sama dengan preview mirror)
+      // Gambar video dengan mirroring (sesuai tampilan)
       ctx.translate(vw, 0);
       ctx.scale(-1, 1);
       ctx.drawImage(videoElement, 0, 0, vw, vh);
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       
-      // Ukuran border lingkaran relatif terhadap lebar video (200px dari CSS, tapi perlu disesuaikan dengan rasio)
-      // Karena border menggunakan persentase dari lebar video? Di CSS lebar 200px absolute, maka kita hitung proporsi dari video display.
-      // Lebih mudah: kita tentukan radius lingkaran = min(vw, vh) * 0.35 (sekitar 35% dari sisi terpendek)
+      // Radius lingkaran (sesuai dengan border CSS: di sini kita hitung proporsional dengan video)
+      // Karena border absolute 260px, tetapi untuk analisis kita gunakan rasio terhadap lebar video
+      // Lebih mudah: ambil radius sekitar 35% dari sisi terpendek agar sesuai dengan lingkaran yang terlihat
       const radius = Math.min(vw, vh) * 0.35;
       const centerX = vw / 2;
       const centerY = vh / 2;
       
-      // Ambil sample pixel dalam lingkaran
       let totalR = 0, totalG = 0, totalB = 0;
       let pixelCount = 0;
-      const step = Math.max(1, Math.floor(radius / 20)); // sampling step untuk performa
+      const step = Math.max(1, Math.floor(radius / 20));
       for (let y = centerY - radius; y <= centerY + radius; y += step) {
         for (let x = centerX - radius; x <= centerX + radius; x += step) {
           const dx = x - centerX;
@@ -1708,7 +1704,7 @@
       const avgB = totalB / pixelCount;
       const avgBrightness = (avgR + avgG + avgB) / 3;
       
-      // Hitung variasi (standar deviasi sederhana)
+      // Hitung variasi (standar deviasi)
       let variance = 0;
       for (let y = centerY - radius; y <= centerY + radius; y += step) {
         for (let x = centerX - radius; x <= centerX + radius; x += step) {
@@ -1724,11 +1720,69 @@
       variance = variance / pixelCount;
       const stdDev = Math.sqrt(variance);
       
-      // Kondisi area terisi: brightness tidak terlalu gelap (<30) dan tidak terlalu terang (>230), serta variasi cukup (>15)
+      // Kondisi area terisi: brightness tidak terlalu gelap (<30) dan tidak terlalu terang (>230), variasi cukup (>15)
       const isBrightnessOk = avgBrightness > 30 && avgBrightness < 230;
       const isVaried = stdDev > 15;
       
       return isBrightnessOk && isVaried;
+    }
+    
+    // Fungsi untuk mengambil foto secara otomatis dan mengirim presensi
+    async function captureAndSubmit() {
+      if (presensiSent) return;
+      presensiSent = true;
+      if (autoCaptureInterval) {
+        clearInterval(autoCaptureInterval);
+        autoCaptureInterval = null;
+      }
+      
+      // Tampilkan notifikasi proses
+      cameraWarning.style.color = "#4caf50";
+      cameraWarning.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Wajah terdeteksi, memproses presensi...';
+      cameraWarning.style.display = "block";
+      
+      // Capture gambar
+      const context = canvas.getContext('2d');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      context.translate(canvas.width, 0);
+      context.scale(-1, 1);
+      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+      imagePreview.src = dataUrl;
+      photoData.value = dataUrl;
+      imagePreviewContainer.style.display = 'block';
+      
+      // Hentikan kamera
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+        stream = null;
+      }
+      cameraPreview.style.display = 'none';
+      
+      const blob = dataURLtoBlob(dataUrl);
+      window.capturedFile = new File([blob], "presensi.jpg", {type: 'image/jpeg'});
+      
+      // Kirim presensi secara otomatis
+      await submitPresensiForm();
+    }
+    
+    // Fungsi untuk memulai pengecekan otomatis area wajah
+    function startAutoDetection() {
+      if (autoCaptureInterval) clearInterval(autoCaptureInterval);
+      autoCaptureInterval = setInterval(() => {
+        if (!video || video.readyState !== 4 || video.videoWidth === 0) return;
+        const filled = isBorderAreaFilled(video);
+        if (filled && !presensiSent) {
+          // Wajah terdeteksi di dalam lingkaran, langsung proses
+          captureAndSubmit();
+        } else if (!filled && !presensiSent) {
+          // Tampilkan notifikasi wajah belum terdeteksi
+          cameraWarning.style.color = "#f44336";
+          cameraWarning.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Wajah tidak terdeteksi di dalam lingkaran. Pastikan wajah Anda berada di tengah.';
+          cameraWarning.style.display = "block";
+        }
+      }, 500);
     }
     
     async function startCamera() {
@@ -1743,50 +1797,35 @@
         stream = await navigator.mediaDevices.getUserMedia(constraints);
         video.srcObject = stream;
         cameraPreview.style.display = 'block';
-        captureBtn.style.display = 'block';
         video.classList.add('mirror-mode');
         cameraWarning.style.display = 'none';
-        selfieValid = false;
+        presensiSent = false;
+        // Tunggu video siap lalu mulai deteksi otomatis
+        video.onloadedmetadata = () => {
+          startAutoDetection();
+        };
       } catch (err) {
         console.error("Error mengakses kamera:", err);
         alert('Tidak dapat mengakses kamera. Pastikan Anda memberikan izin.');
       }
     }
     
-    captureBtn.addEventListener('click', function() {
-      // Validasi area border sebelum capture
-      if (!isBorderAreaFilled(video)) {
-        cameraWarning.style.display = 'block';
-        cameraWarning.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Area selfie tidak terisi! Pastikan wajah Anda berada di dalam lingkaran.';
-        return;
-      }
-      cameraWarning.style.display = 'none';
-      captureBtn.style.display = 'none';
-      const context = canvas.getContext('2d');
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      context.translate(canvas.width, 0);
-      context.scale(-1, 1);
-      context.drawImage(video, 0, 0, canvas.width, canvas.height);
-      const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
-      imagePreview.src = dataUrl;
-      photoData.value = dataUrl;
-      imagePreviewContainer.style.display = 'block';
+    retakeBtn.addEventListener('click', function() {
+      // Reset state untuk pengambilan ulang
+      presensiSent = false;
+      imagePreviewContainer.style.display = 'none';
+      cameraPreview.style.display = 'block';
+      // Hapus file yang lama
+      window.capturedFile = null;
+      photoData.value = '';
+      // Mulai ulang kamera dan deteksi
       if (stream) {
         stream.getTracks().forEach(track => track.stop());
         stream = null;
       }
-      cameraPreview.style.display = 'none';
-      const blob = dataURLtoBlob(dataUrl);
-      window.capturedFile = new File([blob], "presensi.jpg", {type: 'image/jpeg'});
-    });
-
-    retakeBtn.addEventListener('click', function() {
-      imagePreviewContainer.style.display = 'none';
-      cameraPreview.style.display = 'block';
       startCamera();
     });
-
+    
     // ==================== ENHANCED FAKE GPS DETECTION ====================
     function detectFakeGPS(position) {
       if (typeof position.mocked !== 'undefined' && position.mocked) return true;
@@ -1877,23 +1916,21 @@
     
     let watchID = null;
     
-    // ==================== PRESENSI TIME CONFIGURATION (SESUAI PERMINTAAN) ====================
-    // Datang: 06.00 - 07.00 (setiap hari)
-    // Pulang: Senin-Kamis 15.00 - 16.30, Jumat 14.30 - 16.30
+    // ==================== PRESENSI TIME CONFIGURATION ====================
     function isFriday() {
       const now = new Date();
       const utcTime = now.getTime() + (now.getTimezoneOffset() * 60000);
       const wibTime = new Date(utcTime + (3600000 * 7));
-      return wibTime.getDay() === 5; // 5 = Jumat
+      return wibTime.getDay() === 5;
     }
     
     function getPresensiParams() {
-      const datangStart = 6.0;   // 06:00
-      const datangEnd = 8.0;     // 07:00
-      let pulangStart = 15.0;     // 15:00 default
-      const pulangEnd = 16.5;     // 16:30
+      const datangStart = 6.0;
+      const datangEnd = 8.0;
+      let pulangStart = 15.0;
+      const pulangEnd = 16.5;
       if (isFriday()) {
-        pulangStart = 14.5;       // 14:30 untuk Jumat
+        pulangStart = 14.5;
       }
       return { datangStart, datangEnd, pulangStart, pulangEnd };
     }
@@ -1981,9 +2018,8 @@
       
       if (isDatangTime || isPulangTime) {
         timeNotification.classList.remove('show');
-        submitBtn.disabled = false;
+        // submitBtn tidak perlu di-enable karena tombol submit disembunyikan, tapi logika tetap
       } else {
-        submitBtn.disabled = true;
         if (hours < params.datangStart) {
           timeNotificationText.innerHTML = `Saat ini pukul ${currentTime}. Presensi Datang: 06.00 - 07.00 WIB.`;
         } else if (hours >= params.datangEnd && hours < params.pulangStart) {
@@ -2012,11 +2048,12 @@
         timeDrift = (now - lastTime) / (1000 * 60);
       }
       document.getElementById('timeDrift').value = timeDrift;
-      document.getElementById('presensiForm').addEventListener('submit', function() {
+      document.getElementById('presensiForm').addEventListener('submit', function(e) {
+        e.preventDefault(); // karena tombol submit disembunyikan, tapi jika ada submit lain
         document.getElementById('clientTime').value = new Date().toISOString();
         localStorage.setItem('lastPresensi', new Date().toISOString());
       });
-
+      
       const urlParams = new URLSearchParams(window.location.search);
       let sessionId = urlParams.get('session') || localStorage.getItem('sessionId');
       
@@ -2035,11 +2072,11 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ sessionId })
         });
-
+        
         if (!response.ok) throw new Error(`HTTP error ${response.status}`);
-
+        
         const userData = await response.json();
-
+        
         if (!userData) {
           alert('Sesi tidak valid. Silakan login kembali.');
           logout();
@@ -2159,7 +2196,7 @@
       const seconds = wibTime.getSeconds().toString().padStart(2, '0');
       document.getElementById('currentTime').textContent = `${hours}:${minutes}:${seconds} WIB`;
     }
-
+    
     function showLogoutModal() {
       document.getElementById('logoutModal').style.display = 'flex';
     }
@@ -2172,7 +2209,7 @@
       closeModal();
       logout();
     }
-
+    
     async function logout() {
       const sessionId = localStorage.getItem('sessionId');
       const logoutBtn = document.getElementById('logoutButton');
@@ -2216,15 +2253,15 @@
       reader.onload = function(e) {
         const img = new Image();
         img.onload = function() {
-          const canvas = document.createElement('canvas');
-          const ctx = canvas.getContext('2d');
+          const canvasCompress = document.createElement('canvas');
+          const ctx = canvasCompress.getContext('2d');
           const MAX_WIDTH = 800;
           const scale = MAX_WIDTH / img.width;
           const height = img.height * scale;
-          canvas.width = MAX_WIDTH;
-          canvas.height = height;
+          canvasCompress.width = MAX_WIDTH;
+          canvasCompress.height = height;
           ctx.drawImage(img, 0, 0, MAX_WIDTH, height);
-          canvas.toBlob(function(blob) {
+          canvasCompress.toBlob(function(blob) {
             callback(blob);
           }, 'image/jpeg', 0.7);
         };
@@ -2232,7 +2269,7 @@
       };
       reader.readAsDataURL(file);
     }
-
+    
     function showRadiusConfirmation(distance, radius, namaLembaga) {
       const progressPercent = Math.min(100, (distance / radius) * 100);
       document.getElementById('radiusWarningText').textContent = 
@@ -2246,20 +2283,19 @@
       }, 100);
       document.getElementById('radiusWarningPopup').style.display = 'flex';
     }
-
+    
     function continuePresensi() {
       document.getElementById('radiusWarningPopup').style.display = 'none';
       submitPresensiForm();
     }
-
+    
     function cancelPresensi() {
       document.getElementById('radiusWarningPopup').style.display = 'none';
-      const submitBtn = document.getElementById('submitBtn');
-      submitBtn.disabled = false;
-      document.getElementById('loadingSpinner').style.display = 'none';
-      document.getElementById('submitText').textContent = 'Kirim Presensi';
+      // reset flag jika batal
+      presensiSent = false;
+      if (autoCaptureInterval) startAutoDetection();
     }
-
+    
     function showSuccessPopup() {
       const successPopup = document.getElementById('successPopup');
       successPopup.style.display = 'flex';
@@ -2286,35 +2322,46 @@
     }
     
     async function submitPresensiForm() {
-      const submitBtn = document.getElementById('submitBtn');
+      const submitBtn = document.getElementById('submitBtn'); // hidden, but we keep reference
       const loadingSpinner = document.getElementById('loadingSpinner');
       const submitText = document.getElementById('submitText');
       const messageEl = document.getElementById('message');
-
+      
       messageEl.textContent = '';
       messageEl.className = '';
       messageEl.style.display = 'none';
-
+      
       const latitude = document.getElementById('latitude').value;
       const longitude = document.getElementById('longitude').value;
       if (!latitude || !longitude) {
         alert('Mohon dapatkan lokasi terlebih dahulu.');
+        presensiSent = false; // reset agar bisa coba lagi
+        if (autoCaptureInterval) startAutoDetection();
         return;
       }
-
+      
+      if (!isValidPresensiTime()) {
+        alert('Tidak dapat melakukan presensi di luar jam yang ditentukan.');
+        presensiSent = false;
+        if (autoCaptureInterval) startAutoDetection();
+        return;
+      }
+      
       const fileToUpload = window.capturedFile;
       if (!fileToUpload) {
-        alert('Mohon ambil foto terlebih dahulu.');
+        alert('Gagal mengambil foto. Silakan ambil ulang.');
+        presensiSent = false;
+        if (autoCaptureInterval) startAutoDetection();
         return;
       }
-
+      
       submitBtn.disabled = true;
       loadingSpinner.style.display = 'block';
       submitText.textContent = 'Mengirim...';
-
+      
       compressImage(fileToUpload, async function(compressedBlob) {
         const compressedFile = new File([compressedBlob], 'presensi.jpg', { type: 'image/jpeg', lastModified: Date.now() });
-
+        
         const reader = new FileReader();
         reader.onload = async function(event) {
           const fileData = event.target.result.split(',')[1];
@@ -2334,18 +2381,18 @@
             timeDrift: document.getElementById('timeDrift').value,
             lastPresensiTime: document.getElementById('lastPresensiTime').value
           };
-
+          
           try {
             const response = await fetch(`${PROXY_URL}?action=presensi`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(formData)
             });
-
+            
             if (!response.ok) throw new Error(`HTTP error ${response.status}`);
-
+            
             const result = await response.json();
-
+            
             if (result.success) {
               showSuccessPopup();
             } else {
@@ -2355,6 +2402,8 @@
               submitBtn.disabled = false;
               loadingSpinner.style.display = 'none';
               submitText.textContent = 'Kirim Presensi';
+              presensiSent = false;
+              if (autoCaptureInterval) startAutoDetection();
             }
           } catch (error) {
             console.error('Submit error:', error);
@@ -2364,45 +2413,16 @@
             submitBtn.disabled = false;
             loadingSpinner.style.display = 'none';
             submitText.textContent = 'Kirim Presensi';
+            presensiSent = false;
+            if (autoCaptureInterval) startAutoDetection();
           }
         };
         reader.readAsDataURL(compressedFile);
       });
     }
-
-    document.getElementById('presensiForm').addEventListener('submit', function(e) {
-      e.preventDefault();
-      
-      if (!isValidPresensiTime()) {
-        alert('Tidak dapat melakukan presensi di luar jam yang ditentukan.');
-        return;
-      }
-      
-      const latitude = parseFloat(document.getElementById('latitude').value);
-      const longitude = parseFloat(document.getElementById('longitude').value);
-      const sessionData = JSON.parse(localStorage.getItem('sessionData'));
-      
-      if (!sessionData) {
-        alert('Sesi tidak valid. Silakan login kembali.');
-        return;
-      }
-      
-      const lembagaLat = parseFloat(sessionData.lembagaLatitude);
-      const lembagaLon = parseFloat(sessionData.lembagaLongitude);
-      const radius = parseFloat(sessionData.lembagaRadius);
-      
-      const distance = calculateDistance(latitude, longitude, lembagaLat, lembagaLon);
-      
-      if (distance > radius) {
-        showRadiusConfirmation(distance, radius, sessionData.namaLembaga);
-        const submitBtn = document.getElementById('submitBtn');
-        submitBtn.disabled = true;
-        return;
-      }
-      
-      submitPresensiForm();
-    });
-
+    
+    // Tidak ada event listener submit karena tombol submit disembunyikan, presensi otomatis via captureAndSubmit
+    
     setTimeout(() => {
       startCamera();
     }, 3500);
