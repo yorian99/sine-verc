@@ -1594,11 +1594,6 @@
               </div>
               <div class="face-detection-status" id="faceStatus">🔄 Memuat deteksi wajah...</div>
             </div>
-            <div style="display: flex; justify-content: center; margin-top: 10px; gap: 10px;">
-              <button id="captureBtn" class="btn btn-primary" style="width: auto; display: none;">
-                <i class="fas fa-camera"></i> Ambil Foto
-              </button>
-            </div>
           </div>
           
           <canvas id="canvas" style="display: none;"></canvas>
@@ -1644,11 +1639,6 @@
           </div>
         </div>
 
-        <button type="submit" id="submitBtn" class="btn btn-primary" style="display: none;">
-          <div id="loadingSpinner" class="spinner"></div>
-          <span id="submitText">Kirim Presensi</span>
-        </button>
-
         <div id="message"></div>
       </form>
     </div>
@@ -1657,6 +1647,9 @@
   <script>
     // Proxy URL (relatif)
     const PROXY_URL = '/api/proxy';
+
+    // ==================== VARIABEL GLOBAL ====================
+    let bypassRadiusCheck = false;   // Untuk melewati pengecekan radius jika user klik Lanjutkan
 
     // ==================== KAMERA DEPAN OTOMATIS + DETEKSI WAJAH ====================
     const video = document.getElementById('video');
@@ -1907,7 +1900,6 @@
     
     function showFakeGPSBlocker() {
       document.getElementById('fakeGPSBlocker').style.display = 'flex';
-      document.getElementById('submitBtn').disabled = true;
       document.getElementById('latitude').value = '';
       document.getElementById('longitude').value = '';
       document.getElementById('gpsStatus').innerHTML = 
@@ -1958,7 +1950,7 @@
     
     function getPresensiParams() {
       const datangStart = 6.0;
-      const datangEnd = 8.0;
+      const datangEnd = 9.0;
       let pulangStart = 15.0;
       const pulangEnd = 16.5;
       if (isFriday()) {
@@ -2040,7 +2032,6 @@
       const formattedMinutes = wibTime.getMinutes().toString().padStart(2, '0');
       const currentTime = `${formattedHours}:${formattedMinutes} WIB`;
       
-      const submitBtn = document.getElementById('submitBtn');
       const timeNotification = document.getElementById('timeNotification');
       const timeNotificationText = document.getElementById('timeNotificationText');
       
@@ -2050,7 +2041,6 @@
       
       if (isDatangTime || isPulangTime) {
         timeNotification.classList.remove('show');
-        // submitBtn tidak perlu diaktifkan karena auto submit via wajah
       } else {
         if (hours < params.datangStart) {
           timeNotificationText.innerHTML = `Saat ini pukul ${currentTime}. Presensi Datang: 06.00 - 07.00 WIB.`;
@@ -2061,7 +2051,6 @@
           timeNotificationText.innerHTML = `Saat ini pukul ${currentTime}. Presensi untuk hari ini sudah berakhir.`;
         }
         timeNotification.classList.add('show');
-        autoSubmitTriggered = true; // nonaktifkan auto submit jika belum waktunya
       }
     }
     
@@ -2248,7 +2237,6 @@
     async function logout() {
       const sessionId = localStorage.getItem('sessionId');
       const logoutBtn = document.getElementById('logoutButton');
-      const originalLogoutText = logoutBtn.innerHTML;
       logoutBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Logging out...';
       logoutBtn.disabled = true;
       
@@ -2292,15 +2280,15 @@
       reader.onload = function(e) {
         const img = new Image();
         img.onload = function() {
-          const canvas = document.createElement('canvas');
-          const ctx = canvas.getContext('2d');
+          const canvasComp = document.createElement('canvas');
+          const ctx = canvasComp.getContext('2d');
           const MAX_WIDTH = 800;
           const scale = MAX_WIDTH / img.width;
           const height = img.height * scale;
-          canvas.width = MAX_WIDTH;
-          canvas.height = height;
+          canvasComp.width = MAX_WIDTH;
+          canvasComp.height = height;
           ctx.drawImage(img, 0, 0, MAX_WIDTH, height);
-          canvas.toBlob(function(blob) {
+          canvasComp.toBlob(function(blob) {
             callback(blob);
           }, 'image/jpeg', 0.7);
         };
@@ -2323,14 +2311,18 @@
       document.getElementById('radiusWarningPopup').style.display = 'flex';
     }
 
+    // Fungsi untuk melanjutkan presensi (tombol Lanjutkan)
     function continuePresensi() {
       document.getElementById('radiusWarningPopup').style.display = 'none';
+      bypassRadiusCheck = true;   // Tandai bahwa kita melewati pengecekan radius
       submitPresensiForm();
     }
 
+    // Fungsi untuk membatalkan presensi (tombol Batalkan)
     function cancelPresensi() {
       document.getElementById('radiusWarningPopup').style.display = 'none';
-      // Kembalikan ke kamera jika batal
+      bypassRadiusCheck = false;  // Reset flag
+      // Kembalikan ke kamera jika belum submit
       if (!autoSubmitTriggered) {
         startCamera();
       }
@@ -2362,9 +2354,6 @@
     }
     
     async function submitPresensiForm() {
-      const submitBtn = document.getElementById('submitBtn');
-      const loadingSpinner = document.getElementById('loadingSpinner');
-      const submitText = document.getElementById('submitText');
       const messageEl = document.getElementById('message');
 
       messageEl.textContent = '';
@@ -2389,23 +2378,28 @@
         return;
       }
 
-      // Cek radius
-      const sessionData = JSON.parse(localStorage.getItem('sessionData'));
-      if (sessionData) {
-        const lembagaLat = parseFloat(sessionData.lembagaLatitude);
-        const lembagaLon = parseFloat(sessionData.lembagaLongitude);
-        const radius = parseFloat(sessionData.lembagaRadius);
-        const distance = calculateDistance(parseFloat(latitude), parseFloat(longitude), lembagaLat, lembagaLon);
-        if (distance > radius) {
-          showRadiusConfirmation(distance, radius, sessionData.namaLembaga);
-          return;
+      // Cek radius hanya jika belum di-bypass
+      if (!bypassRadiusCheck) {
+        const sessionData = JSON.parse(localStorage.getItem('sessionData'));
+        if (sessionData) {
+          const lembagaLat = parseFloat(sessionData.lembagaLatitude);
+          const lembagaLon = parseFloat(sessionData.lembagaLongitude);
+          const radius = parseFloat(sessionData.lembagaRadius);
+          const distance = calculateDistance(parseFloat(latitude), parseFloat(longitude), lembagaLat, lembagaLon);
+          if (distance > radius) {
+            showRadiusConfirmation(distance, radius, sessionData.namaLembaga);
+            return;  // Hentikan proses, tampilkan popup
+          }
         }
+      } else {
+        // Reset flag setelah digunakan
+        bypassRadiusCheck = false;
       }
 
-      submitBtn.disabled = true;
-      loadingSpinner.style.display = 'block';
-      submitText.textContent = 'Mengirim...';
-
+      // Tampilkan loading (opsional, karena tidak ada tombol submit yang terlihat)
+      // Kita bisa menampilkan pesan di status wajah
+      faceStatusDiv.innerHTML = "📤 Mengirim presensi...";
+      
       compressImage(fileToUpload, async function(compressedBlob) {
         const compressedFile = new File([compressedBlob], 'presensi.jpg', { type: 'image/jpeg', lastModified: Date.now() });
 
@@ -2436,7 +2430,7 @@
               body: JSON.stringify(formData)
             });
 
-            // Tangani error 504 menjadi sukses palsu
+            // Tangani error 504 menjadi sukses (sesuai permintaan: "Presensi Sudah Terkirim")
             if (response.status === 504) {
               console.warn("Error 504 - server sibuk, tetapi presensi dianggap berhasil");
               showSuccessPopup();
@@ -2453,35 +2447,34 @@
               messageEl.textContent = result.message;
               messageEl.classList.add('error');
               messageEl.style.display = 'block';
-              submitBtn.disabled = false;
-              loadingSpinner.style.display = 'none';
-              submitText.textContent = 'Kirim Presensi';
               // Kembali ke mode kamera jika gagal
               if (!autoSubmitTriggered) startCamera();
+              else {
+                // Jika auto submit gagal, reset flag dan kembali ke kamera
+                autoSubmitTriggered = false;
+                startCamera();
+              }
             }
           } catch (error) {
             console.error('Submit error:', error);
-            // Jika error network, kita tetap anggap sukses untuk kenyamanan (sesuai permintaan)
+            // Jika error 504 atau pesan mengandung 504, anggap sukses
             if (error.message.includes('504') || error.message.includes('HTTP error 504')) {
               showSuccessPopup();
             } else {
               messageEl.textContent = 'Error: ' + error.message;
               messageEl.classList.add('error');
               messageEl.style.display = 'block';
-              submitBtn.disabled = false;
-              loadingSpinner.style.display = 'none';
-              submitText.textContent = 'Kirim Presensi';
               if (!autoSubmitTriggered) startCamera();
+              else {
+                autoSubmitTriggered = false;
+                startCamera();
+              }
             }
           }
         };
         reader.readAsDataURL(compressedFile);
       });
     }
-
-    // Event listener tidak diperlukan karena auto submit via face detection
-    // Tombol submit disembunyikan
-    document.getElementById('submitBtn').style.display = 'none';
   </script>
 </body>
 </html>
