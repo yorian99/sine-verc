@@ -1524,7 +1524,7 @@
         <input type="hidden" id="sessionId" name="sessionId">
         <input type="hidden" id="presensiType" name="presensi">
         
-        <!-- Input hidden untuk time drift -->
+        <!-- TAMBAHKAN TIGA INPUT HIDDEN DI SINI -->
         <input type="hidden" name="clientTime" id="clientTime">
         <input type="hidden" name="timeDrift" id="timeDrift">
         <input type="hidden" name="lastPresensiTime" id="lastPresensiTime">
@@ -1548,7 +1548,7 @@
                 <i class="fas fa-sign-in-alt"></i>
                 <span>Presensi Masuk</span>
               </div>
-              <div class="slot-time">06:00 - 09:00</div>  <!-- JAM PAGI DIUBAH MENJADI 06:00 - 09:00 -->
+              <div class="slot-time">06:00 - 07:00</div>
               <div class="slot-status status-inactive">Tidak Aktif</div>
               <div class="slot-description">Presensi masuk Pegawai</div>
             </div>
@@ -1608,7 +1608,7 @@
           </div>
         </div>
 
-        <!-- Info Lokasi Lembaga -->
+        <!-- Info Lokasi Lembaga (dipindahkan di bawah Bukti Dukung) -->
         <div class="location-info">
           <div class="location-detail">
             <h3><i class="fas fa-map-marker-alt"></i> Lokasi Lembaga</h3>
@@ -1650,6 +1650,58 @@
 
     // ==================== VARIABEL GLOBAL ====================
     let bypassRadiusCheck = false;   // Untuk melewati pengecekan radius jika user klik Lanjutkan
+    let serverTimeOffset = 0;        // Selisih waktu client - server (ms). Jika positif, client lebih cepat.
+    let lastServerTimestamp = null;   // Waktu server terakhir yang diterima (epoch ms)
+    let lastClientTimestamp = null;   // Waktu client saat meminta server time
+    const TIME_SYNC_TOLERANCE = 60000; // Toleransi 60 detik (60000 ms)
+
+    // ==================== FUNGSI SINKRONISASI WAKTU ====================
+    async function syncServerTime() {
+      try {
+        const clientRequestTime = Date.now();
+        const response = await fetch(`${PROXY_URL}?action=getServerTime`, {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        if (!response.ok) throw new Error('Gagal mengambil waktu server');
+        const data = await response.json();
+        if (data && data.serverTime) {
+          const serverTime = data.serverTime; // server time dalam epoch milliseconds
+          const clientReceiveTime = Date.now();
+          // Hitung estimasi server time saat request dikirim (asumsi RTT simetris)
+          const estimatedServerTime = serverTime + (clientReceiveTime - clientRequestTime) / 2;
+          const offset = clientRequestTime - estimatedServerTime; // positif jika client lebih cepat
+          serverTimeOffset = offset;
+          lastServerTimestamp = estimatedServerTime;
+          lastClientTimestamp = clientRequestTime;
+          console.log(`Sinkronisasi waktu: offset = ${offset} ms (${offset/1000} detik)`);
+        }
+      } catch (err) {
+        console.error('Gagal sinkron waktu server:', err);
+        // Jika gagal sinkron, offset dianggap 0 (tidak memblokir karena waktu server tidak diketahui)
+        serverTimeOffset = 0;
+      }
+    }
+
+    // Fungsi untuk mendapatkan estimasi waktu server saat ini
+    function getEstimatedServerTime() {
+      if (lastServerTimestamp === null) return null;
+      const elapsed = Date.now() - lastClientTimestamp;
+      return lastServerTimestamp + elapsed;
+    }
+
+    // Validasi apakah jam client sesuai dengan server (selisih dalam toleransi)
+    function isClientTimeValid() {
+      const estimatedServer = getEstimatedServerTime();
+      if (estimatedServer === null) return true; // jika belum sinkron, lewati validasi
+      const clientNow = Date.now();
+      const diff = Math.abs(clientNow - estimatedServer);
+      const isValid = diff <= TIME_SYNC_TOLERANCE;
+      if (!isValid) {
+        console.warn(`Perbedaan waktu client-server terlalu besar: ${diff} ms`);
+      }
+      return isValid;
+    }
 
     // ==================== KAMERA DEPAN OTOMATIS + DETEKSI WAJAH ====================
     const video = document.getElementById('video');
@@ -1668,7 +1720,6 @@
     let autoSubmitTriggered = false;
     let modelsLoaded = false;
     
-    // Fungsi untuk memuat model face-api
     async function loadFaceModels() {
       try {
         faceStatusDiv.innerHTML = "🔄 Memuat model deteksi wajah...";
@@ -1712,12 +1763,10 @@
         cameraPreview.style.display = 'block';
         video.classList.add('mirror-mode');
         
-        // Tunggu video ready
         await new Promise(resolve => {
           video.onloadedmetadata = () => resolve();
         });
         
-        // Load model dan mulai deteksi
         await loadFaceModels();
         startFaceDetection();
         
@@ -1737,7 +1786,6 @@
         try {
           const detections = await faceapi.detectAllFaces(video, new faceapi.TinyFaceDetectorOptions());
           
-          // Gambar overlay (opsional)
           const overlayCtx = faceOverlay.getContext('2d');
           overlayCtx.clearRect(0, 0, faceOverlay.width, faceOverlay.height);
           faceOverlay.width = video.videoWidth;
@@ -1746,9 +1794,8 @@
           const hasFace = detections.length > 0;
           
           if (hasFace) {
-            // Periksa apakah wajah berada di dalam border area (area tengah 70% dari frame)
             const videoRect = { width: video.videoWidth, height: video.videoHeight };
-            const borderMarginX = videoRect.width * 0.15; // 15% dari tepi
+            const borderMarginX = videoRect.width * 0.15;
             const borderMarginY = videoRect.height * 0.15;
             const borderBox = {
               x: borderMarginX,
@@ -1760,7 +1807,6 @@
             let faceInside = false;
             for (const detection of detections) {
               const box = detection.box;
-              // Hitung persentase luas wajah yang masuk border
               const intersectX = Math.max(box.x, borderBox.x);
               const intersectY = Math.max(box.y, borderBox.y);
               const intersectW = Math.min(box.x + box.width, borderBox.x + borderBox.width) - intersectX;
@@ -1768,7 +1814,7 @@
               if (intersectW > 0 && intersectH > 0) {
                 const intersectArea = intersectW * intersectH;
                 const faceArea = box.width * box.height;
-                if (intersectArea / faceArea > 0.7) { // minimal 70% wajah di dalam border
+                if (intersectArea / faceArea > 0.7) {
                   faceInside = true;
                   break;
                 }
@@ -1782,7 +1828,6 @@
                 faceStatusDiv.classList.add('detection-success');
                 faceStatusDiv.classList.remove('detection-warning');
                 
-                // Auto capture dan submit presensi (hanya sekali)
                 if (!autoSubmitTriggered) {
                   autoSubmitTriggered = true;
                   if (detectionInterval) clearInterval(detectionInterval);
@@ -1843,7 +1888,7 @@
       faceDetected = false;
     });
     
-    // ==================== FAKE GPS DETECTION ====================
+    // ==================== ENHANCED FAKE GPS DETECTION ====================
     function detectFakeGPS(position) {
       if (typeof position.mocked !== 'undefined' && position.mocked) return true;
       if (position.coords.accuracy < 1 || position.coords.accuracy > 10000) return true;
@@ -1894,7 +1939,8 @@
       document.getElementById('fakeGPSBlocker').style.display = 'flex';
       document.getElementById('latitude').value = '';
       document.getElementById('longitude').value = '';
-      document.getElementById('gpsStatus').innerHTML = '<i class="fas fa-ban" style="color: #f44336;"></i> Lokasi palsu terdeteksi!';
+      document.getElementById('gpsStatus').innerHTML = 
+        '<i class="fas fa-ban" style="color: #f44336;"></i> Lokasi palsu terdeteksi!';
       document.getElementById('gpsDot').classList.remove('active');
     }
     
@@ -1931,7 +1977,7 @@
     
     let watchID = null;
     
-    // ==================== PRESENSI TIME CONFIGURATION (PERUBAHAN: PAGI 06.00 - 09.00) ====================
+    // ==================== PRESENSI TIME CONFIGURATION ====================
     function isFriday() {
       const now = new Date();
       const utcTime = now.getTime() + (now.getTimezoneOffset() * 60000);
@@ -1940,12 +1986,12 @@
     }
     
     function getPresensiParams() {
-      const datangStart = 6.0;    // 06:00
-      const datangEnd = 9.0;      // 09:00 (diubah dari 7.0)
-      let pulangStart = 15.0;     // 15:00 default
-      const pulangEnd = 16.5;     // 16:30
+      const datangStart = 6.0;
+      const datangEnd = 9.0;
+      let pulangStart = 15.0;
+      const pulangEnd = 16.5;
       if (isFriday()) {
-        pulangStart = 14.5;       // 14:30 untuk Jumat
+        pulangStart = 14.5;
       }
       return { datangStart, datangEnd, pulangStart, pulangEnd };
     }
@@ -1962,7 +2008,7 @@
       }
       const datangSlot = document.querySelector('.time-slot.datang .slot-time');
       if (datangSlot) {
-        datangSlot.textContent = '06:00 - 09:00';  // Perbarui tampilan
+        datangSlot.textContent = '06:00 - 07:00';
       }
     }
     
@@ -2034,7 +2080,7 @@
         timeNotification.classList.remove('show');
       } else {
         if (hours < params.datangStart) {
-          timeNotificationText.innerHTML = `Saat ini pukul ${currentTime}. Presensi Datang: 06.00 - 09.00 WIB.`;
+          timeNotificationText.innerHTML = `Saat ini pukul ${currentTime}. Presensi Datang: 06.00 - 07.00 WIB.`;
         } else if (hours >= params.datangEnd && hours < params.pulangStart) {
           let pulangInfo = isFriday() ? '14.30 - 16.30 WIB' : '15.00 - 16.30 WIB';
           timeNotificationText.innerHTML = `Saat ini pukul ${currentTime}. Presensi Pulang ${pulangInfo}.`;
@@ -2046,6 +2092,11 @@
     }
     
     async function initializeApp() {
+      // Lakukan sinkronisasi waktu dengan server terlebih dahulu
+      await syncServerTime();
+      // Sinkron ulang setiap 5 menit untuk menjaga akurasi
+      setInterval(syncServerTime, 300000);
+      
       document.getElementById('logoutButton').addEventListener('click', showLogoutModal);
       document.querySelector('.modal-btn.cancel').addEventListener('click', closeModal);
       document.querySelector('.modal-btn.logout').addEventListener('click', confirmLogout);
@@ -2334,11 +2385,36 @@
       }, 1000);
     }
     
+    function redirectToLogin() {
+      localStorage.removeItem('sessionId');
+      localStorage.removeItem('sessionData');
+      window.location.href = '/';
+    }
+    
     async function submitPresensiForm() {
       const messageEl = document.getElementById('message');
+
       messageEl.textContent = '';
       messageEl.className = '';
       messageEl.style.display = 'none';
+
+      // VALIDASI PERUBAHAN JAM CLIENT-SERVER
+      if (!isClientTimeValid()) {
+        messageEl.textContent = 'Perubahan jam terdeteksi! Waktu perangkat Anda tidak sesuai dengan waktu server. Silakan perbaiki waktu perangkat Anda dan muat ulang halaman.';
+        messageEl.classList.add('error');
+        messageEl.style.display = 'block';
+        // Kembalikan ke mode kamera
+        if (!autoSubmitTriggered) startCamera();
+        else {
+          autoSubmitTriggered = false;
+          startCamera();
+        }
+        return;
+      }
+
+      // Isi clientTime dengan timestamp client saat ini
+      const clientTimestamp = Date.now();
+      document.getElementById('clientTime').value = clientTimestamp;
 
       const latitude = document.getElementById('latitude').value;
       const longitude = document.getElementById('longitude').value;
@@ -2417,6 +2493,8 @@
             const result = await response.json();
 
             if (result.success) {
+              // Simpan waktu presensi terakhir ke localStorage
+              localStorage.setItem('lastPresensi', new Date().toISOString());
               showSuccessPopup();
             } else {
               messageEl.textContent = result.message;
