@@ -470,6 +470,100 @@
       background: #F5F5F5;
     }
 
+    /* ==================== PROGRESS PENGIRIMAN PRESENSI (BARU) ==================== */
+    #progressDeliveryModal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(4px);
+      z-index: 2100;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Poppins', sans-serif;
+    }
+
+    .progress-delivery-container {
+      background: white;
+      border-radius: 28px;
+      width: 90%;
+      max-width: 360px;
+      padding: 28px 24px 32px;
+      text-align: center;
+      box-shadow: 0 25px 45px rgba(0, 0, 0, 0.2);
+      animation: modalAppear 0.3s cubic-bezier(0.2, 0.9, 0.4, 1.1);
+    }
+
+    @keyframes modalAppear {
+      from { opacity: 0; transform: scale(0.92) translateY(12px); }
+      to { opacity: 1; transform: scale(1) translateY(0); }
+    }
+
+    .progress-icon {
+      width: 80px;
+      height: 80px;
+      margin: 0 auto 18px;
+      background: linear-gradient(145deg, #f0f4ff, #e9eeff);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .progress-icon i {
+      font-size: 3rem;
+      color: #4361ee;
+      animation: spinProgress 1s linear infinite;
+    }
+
+    @keyframes spinProgress {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .progress-delivery-container h3 {
+      font-size: 1.5rem;
+      margin-bottom: 8px;
+      color: #1e293b;
+      font-weight: 600;
+    }
+
+    .progress-step {
+      margin: 16px 0 8px;
+      font-size: 0.95rem;
+      color: #334155;
+      background: #f8fafc;
+      padding: 8px 12px;
+      border-radius: 40px;
+      display: inline-block;
+    }
+
+    .progress-bar-wrapper {
+      margin: 24px 0 12px;
+      width: 100%;
+      height: 8px;
+      background: #e2e8f0;
+      border-radius: 40px;
+      overflow: hidden;
+    }
+
+    .progress-bar-animated {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #4361ee, #7c3aed);
+      border-radius: 40px;
+      transition: width 0.2s ease;
+    }
+
+    .progress-status-text {
+      font-size: 0.85rem;
+      color: #5b6e8c;
+      margin-top: 12px;
+    }
+
     /* ==================== EXISTING STYLES ==================== */
     :root {
       --primary: #4361ee;
@@ -1507,6 +1601,23 @@
     </div>
   </div>
 
+  <!-- ============== PROGRES PENGIRIMAN PRESENSI (MENU BARU) ============== -->
+  <div id="progressDeliveryModal">
+    <div class="progress-delivery-container">
+      <div class="progress-icon">
+        <i class="fas fa-cloud-upload-alt"></i>
+      </div>
+      <h3>Mengirim Presensi</h3>
+      <div class="progress-step">
+        <i class="fas fa-spinner fa-spin" style="margin-right: 6px;"></i> Mengirim data...
+      </div>
+      <div class="progress-bar-wrapper">
+        <div class="progress-bar-animated" id="deliveryProgressFill"></div>
+      </div>
+      <div class="progress-status-text" id="deliveryStatusText">Memproses foto & verifikasi</div>
+    </div>
+  </div>
+
   <div class="container">
     <div class="card">
       <button class="logout-btn" id="logoutButton">
@@ -1655,6 +1766,29 @@
     let autoSubmitTriggered = false;
     let modelsLoaded = false;
     let watchID = null;
+
+    // ========== PROGRESS MENU CONTROL ==========
+    const progressModal = document.getElementById('progressDeliveryModal');
+    const deliveryProgressFill = document.getElementById('deliveryProgressFill');
+    const deliveryStatusText = document.getElementById('deliveryStatusText');
+
+    function showProgressMenu(stepText = "Memproses foto & verifikasi", progressPercent = 30) {
+      if (deliveryProgressFill) {
+        deliveryProgressFill.style.width = progressPercent + '%';
+      }
+      if (deliveryStatusText) deliveryStatusText.innerText = stepText;
+      if (progressModal) progressModal.style.display = 'flex';
+    }
+
+    function updateProgressMenu(stepText, percent) {
+      if (deliveryProgressFill) deliveryProgressFill.style.width = percent + '%';
+      if (deliveryStatusText) deliveryStatusText.innerText = stepText;
+    }
+
+    function hideProgressMenu() {
+      if (progressModal) progressModal.style.display = 'none';
+      if (deliveryProgressFill) deliveryProgressFill.style.width = '0%';
+    }
 
     // ==================== FACE DETECTION ====================
     async function loadFaceModels() {
@@ -2083,6 +2217,7 @@
     function closeTimeNotification() { document.getElementById('timeNotification').classList.remove('show'); }
     
     function compressImage(file, callback) {
+      updateProgressMenu("Mengompres foto ...", 45);
       const reader = new FileReader();
       reader.onload = function(e) {
         const img = new Image();
@@ -2146,10 +2281,8 @@
       messageEl.className = '';
       messageEl.style.display = 'none';
       
-      // ** PERBAIKAN UTAMA: Pastikan clientTime diisi dengan timestamp milidetik yang valid **
       const clientTimestamp = Date.now();
       document.getElementById('clientTime').value = clientTimestamp;
-      console.log('clientTime diisi:', clientTimestamp); // untuk debugging
       
       const latitude = document.getElementById('latitude').value;
       const longitude = document.getElementById('longitude').value;
@@ -2173,6 +2306,9 @@
       
       faceStatusDiv.innerHTML = "📤 Mengirim presensi...";
       
+      // TAMPILKAN MENU PROGRES SETELAH FOTO DIAMBIL DAN SEBELUM PROSES KIRIM
+      showProgressMenu("Menyiapkan data presensi...", 20);
+      
       compressImage(fileToUpload, async function(compressedBlob) {
         const compressedFile = new File([compressedBlob], 'presensi.jpg', { type: 'image/jpeg', lastModified: Date.now() });
         const reader = new FileReader();
@@ -2186,10 +2322,12 @@
             latitude: latitude,
             longitude: longitude,
             file: { name: 'presensi.jpg', type: 'image/jpeg', data: fileData },
-            clientTime: document.getElementById('clientTime').value, // sudah terisi number
+            clientTime: document.getElementById('clientTime').value,
             timeDrift: document.getElementById('timeDrift').value,
             lastPresensiTime: document.getElementById('lastPresensiTime').value
           };
+          
+          updateProgressMenu("Mengirim data ke server ...", 70);
           
           try {
             const response = await fetch(`${PROXY_URL}?action=presensi`, {
@@ -2197,13 +2335,22 @@
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(formData)
             });
-            if (response.status === 504) { console.warn("Error 504 - server sibuk, tetapi presensi dianggap berhasil"); showSuccessPopup(); return; }
+            if (response.status === 504) { 
+              updateProgressMenu("Server sibuk, presensi tercatat", 100);
+              setTimeout(() => { hideProgressMenu(); showSuccessPopup(); }, 400);
+              return; 
+            }
             if (!response.ok) throw new Error(`HTTP error ${response.status}`);
             const result = await response.json();
             if (result.success) {
-              localStorage.setItem('lastPresensi', new Date().toISOString());
-              showSuccessPopup();
+              updateProgressMenu("Berhasil! Memperbarui data ...", 100);
+              setTimeout(() => {
+                hideProgressMenu();
+                localStorage.setItem('lastPresensi', new Date().toISOString());
+                showSuccessPopup();
+              }, 500);
             } else {
+              hideProgressMenu();
               messageEl.textContent = result.message;
               messageEl.classList.add('error');
               messageEl.style.display = 'block';
@@ -2211,8 +2358,11 @@
             }
           } catch (error) {
             console.error('Submit error:', error);
-            if (error.message.includes('504')) showSuccessPopup();
-            else {
+            hideProgressMenu();
+            if (error.message.includes('504')) {
+              hideProgressMenu();
+              showSuccessPopup();
+            } else {
               messageEl.textContent = 'Error: ' + error.message;
               messageEl.classList.add('error');
               messageEl.style.display = 'block';
