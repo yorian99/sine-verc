@@ -564,6 +564,98 @@
       margin-top: 12px;
     }
 
+    /* ==================== ERROR POPUP BARU UNTUK PEMBLOKIRAN ABSEN ==================== */
+    #errorPopup {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.8);
+      z-index: 2200;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      backdrop-filter: blur(5px);
+    }
+
+    .error-popup-container {
+      background: white;
+      border-radius: 16px;
+      width: 90%;
+      max-width: 400px;
+      overflow: hidden;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+      transform: scale(0.9);
+      opacity: 0;
+      animation: popupAppear 0.3s ease-out forwards;
+    }
+
+    .error-popup-header {
+      background: #ffebee;
+      padding: 20px;
+      text-align: center;
+      border-bottom: 1px solid #ffcdd2;
+    }
+
+    .error-popup-icon {
+      font-size: 3rem;
+      color: #f44336;
+      margin-bottom: 10px;
+    }
+
+    .error-popup-title {
+      color: #c62828;
+      font-size: 1.3rem;
+      font-weight: 600;
+      margin: 0;
+    }
+
+    .error-popup-body {
+      padding: 20px;
+    }
+
+    .error-popup-text {
+      color: #555;
+      text-align: center;
+      margin-bottom: 20px;
+      font-size: 1rem;
+      line-height: 1.5;
+    }
+
+    .error-popup-footer {
+      display: flex;
+      border-top: 1px solid #EEE;
+    }
+
+    .error-popup-btn {
+      flex: 1;
+      padding: 15px;
+      border: none;
+      background: none;
+      font-weight: 600;
+      font-size: 0.95rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .error-popup-btn.close {
+      color: #757575;
+    }
+
+    .error-popup-btn.logout {
+      color: #f44336;
+      border-left: 1px solid #EEE;
+    }
+
+    .error-popup-btn:hover {
+      background: #F5F5F5;
+    }
+
     /* ==================== EXISTING STYLES ==================== */
     :root {
       --primary: #4361ee;
@@ -1618,6 +1710,23 @@
     </div>
   </div>
 
+  <!-- ============== POPUP ERROR UNTUK PEMBLOKIRAN ABSEN ============== -->
+  <div id="errorPopup">
+    <div class="error-popup-container">
+      <div class="error-popup-header">
+        <i class="fas fa-times-circle error-popup-icon"></i>
+        <h3 class="error-popup-title">Presensi Gagal</h3>
+      </div>
+      <div class="error-popup-body">
+        <p class="error-popup-text" id="errorPopupMessage">Terjadi kesalahan saat melakukan presensi.</p>
+      </div>
+      <div class="error-popup-footer" id="errorPopupFooter">
+        <button class="error-popup-btn close" id="closeErrorBtn">Tutup</button>
+        <button class="error-popup-btn logout" id="logoutFromErrorBtn" style="display: none;">Logout</button>
+      </div>
+    </div>
+  </div>
+
   <div class="container">
     <div class="card">
       <button class="logout-btn" id="logoutButton">
@@ -1741,7 +1850,7 @@
           </div>
         </div>
 
-        <div id="message"></div>
+        <div id="message" style="display: none;"></div>
       </form>
     </div>
   </div>
@@ -1767,6 +1876,9 @@
     let modelsLoaded = false;
     let watchID = null;
 
+    // Counter untuk jumlah blokir/pemblokiran absen berturut-turut
+    let presensiBlockedCount = 0;
+
     // ========== PROGRESS MENU CONTROL ==========
     const progressModal = document.getElementById('progressDeliveryModal');
     const deliveryProgressFill = document.getElementById('deliveryProgressFill');
@@ -1789,6 +1901,32 @@
       if (progressModal) progressModal.style.display = 'none';
       if (deliveryProgressFill) deliveryProgressFill.style.width = '0%';
     }
+
+    // ========== ERROR POPUP FUNCTIONS ==========
+    const errorPopup = document.getElementById('errorPopup');
+    const errorPopupMessage = document.getElementById('errorPopupMessage');
+    const closeErrorBtn = document.getElementById('closeErrorBtn');
+    const logoutFromErrorBtn = document.getElementById('logoutFromErrorBtn');
+
+    function showErrorPopup(message, showLogoutBtn = false) {
+      errorPopupMessage.innerText = message;
+      if (showLogoutBtn) {
+        logoutFromErrorBtn.style.display = 'flex';
+      } else {
+        logoutFromErrorBtn.style.display = 'none';
+      }
+      errorPopup.style.display = 'flex';
+    }
+
+    function hideErrorPopup() {
+      errorPopup.style.display = 'none';
+    }
+
+    closeErrorBtn.addEventListener('click', hideErrorPopup);
+    logoutFromErrorBtn.addEventListener('click', () => {
+      hideErrorPopup();
+      logout();
+    });
 
     // ==================== FACE DETECTION ====================
     async function loadFaceModels() {
@@ -2260,6 +2398,8 @@
     }
     
     function showSuccessPopup() {
+      // Reset counter blokir karena presensi berhasil
+      presensiBlockedCount = 0;
       const successPopup = document.getElementById('successPopup');
       successPopup.style.display = 'flex';
       let seconds = 5;
@@ -2276,6 +2416,7 @@
     }
     
     async function submitPresensiForm() {
+      // Reset pesan kesalahan (tidak pakai #message lagi, tapi tetap sembunyikan)
       const messageEl = document.getElementById('message');
       messageEl.textContent = '';
       messageEl.className = '';
@@ -2286,12 +2427,31 @@
       
       const latitude = document.getElementById('latitude').value;
       const longitude = document.getElementById('longitude').value;
-      if (!latitude || !longitude) { alert('Mohon dapatkan lokasi terlebih dahulu.'); return; }
+      if (!latitude || !longitude) {
+        // Tampilkan error popup tanpa tombol logout jika blokir kurang dari 2 kali
+        presensiBlockedCount++;
+        const showLogout = (presensiBlockedCount >= 2);
+        showErrorPopup('Mohon dapatkan lokasi terlebih dahulu.', showLogout);
+        if (!autoSubmitTriggered) startCamera(); else { autoSubmitTriggered = false; startCamera(); }
+        return;
+      }
       
       const fileToUpload = window.capturedFile;
-      if (!fileToUpload) { alert('Mohon ambil foto terlebih dahulu.'); return; }
+      if (!fileToUpload) {
+        presensiBlockedCount++;
+        const showLogout = (presensiBlockedCount >= 2);
+        showErrorPopup('Mohon ambil foto terlebih dahulu.', showLogout);
+        if (!autoSubmitTriggered) startCamera(); else { autoSubmitTriggered = false; startCamera(); }
+        return;
+      }
       
-      if (!isValidPresensiTime()) { alert('Tidak dapat melakukan presensi di luar jam yang ditentukan.'); return; }
+      if (!isValidPresensiTime()) {
+        presensiBlockedCount++;
+        const showLogout = (presensiBlockedCount >= 2);
+        showErrorPopup('Tidak dapat melakukan presensi di luar jam yang ditentukan.', showLogout);
+        if (!autoSubmitTriggered) startCamera(); else { autoSubmitTriggered = false; startCamera(); }
+        return;
+      }
       
       if (!bypassRadiusCheck) {
         const sessionData = JSON.parse(localStorage.getItem('sessionData'));
@@ -2300,7 +2460,11 @@
           const lembagaLon = parseFloat(sessionData.lembagaLongitude);
           const radius = parseFloat(sessionData.lembagaRadius);
           const distance = calculateDistance(parseFloat(latitude), parseFloat(longitude), lembagaLat, lembagaLon);
-          if (distance > radius) { showRadiusConfirmation(distance, radius, sessionData.namaLembaga); return; }
+          if (distance > radius) {
+            // Radius check belum dilewati, tampilkan konfirmasi (tetap tidak menambah counter blokir)
+            showRadiusConfirmation(distance, radius, sessionData.namaLembaga);
+            return;
+          }
         }
       } else { bypassRadiusCheck = false; }
       
@@ -2351,9 +2515,10 @@
               }, 500);
             } else {
               hideProgressMenu();
-              messageEl.textContent = result.message;
-              messageEl.classList.add('error');
-              messageEl.style.display = 'block';
+              // Gagal presensi dari server (result.success false)
+              presensiBlockedCount++;
+              const showLogout = (presensiBlockedCount >= 2);
+              showErrorPopup(result.message || 'Presensi gagal, silakan coba lagi.', showLogout);
               if (!autoSubmitTriggered) startCamera(); else { autoSubmitTriggered = false; startCamera(); }
             }
           } catch (error) {
@@ -2363,9 +2528,9 @@
               hideProgressMenu();
               showSuccessPopup();
             } else {
-              messageEl.textContent = 'Error: ' + error.message;
-              messageEl.classList.add('error');
-              messageEl.style.display = 'block';
+              presensiBlockedCount++;
+              const showLogout = (presensiBlockedCount >= 2);
+              showErrorPopup('Error: ' + error.message, showLogout);
               if (!autoSubmitTriggered) startCamera(); else { autoSubmitTriggered = false; startCamera(); }
             }
           }
