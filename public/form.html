@@ -1765,6 +1765,7 @@
     let faceDetected = false;
     let autoSubmitTriggered = false;
     let modelsLoaded = false;
+    let landmarksReady = false;   // NEW: flag for eyes/nose/mouth detected
     let watchID = null;
 
     // ========== PROGRESS MENU CONTROL ==========
@@ -1790,13 +1791,15 @@
       if (deliveryProgressFill) deliveryProgressFill.style.width = '0%';
     }
 
-    // ==================== FACE DETECTION ====================
+    // ==================== FACE DETECTION WITH LANDMARKS (EYES, NOSE, MOUTH) ====================
     async function loadFaceModels() {
       try {
-        faceStatusDiv.innerHTML = "🔄 Memuat model deteksi wajah...";
+        faceStatusDiv.innerHTML = "🔄 Memuat model deteksi wajah & landmark...";
+        // Load tiny face detector and landmark 68 net
         await faceapi.nets.tinyFaceDetector.loadFromUri('https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@0.22.2/weights');
+        await faceapi.nets.faceLandmark68Net.loadFromUri('https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@0.22.2/weights');
         modelsLoaded = true;
-        faceStatusDiv.innerHTML = "✅ Silahkan posisikan wajah di dalam border";
+        faceStatusDiv.innerHTML = "✅ Siap: Posisikan wajah, pastikan mata, hidung & mulut terlihat";
         faceStatusDiv.classList.remove('detection-warning');
         faceStatusDiv.classList.add('detection-success');
         return true;
@@ -1837,18 +1840,89 @@
       }
     }
     
+    // Draw specific landmarks: eyes (left & right), nose tip, mouth outline
+    function drawLandmarks(ctx, landmarks, width, height) {
+      if (!landmarks || !landmarks.positions) return;
+      const points = landmarks.positions;
+      if (points.length < 68) return; // need full 68-point model
+      
+      // Left eye indices (36-41)
+      ctx.fillStyle = "#00ffcc";
+      ctx.shadowBlur = 0;
+      const leftEye = points.slice(36, 42);
+      leftEye.forEach(p => {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 4, 0, 2 * Math.PI);
+        ctx.fillStyle = "#00ffcc";
+        ctx.fill();
+        ctx.strokeStyle = "#ffffff";
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+      });
+      
+      // Right eye indices (42-47)
+      const rightEye = points.slice(42, 48);
+      rightEye.forEach(p => {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 4, 0, 2 * Math.PI);
+        ctx.fillStyle = "#00ffcc";
+        ctx.fill();
+        ctx.strokeStyle = "#ffffff";
+        ctx.stroke();
+      });
+      
+      // Nose tip (index 30)
+      const noseTip = points[30];
+      if (noseTip) {
+        ctx.beginPath();
+        ctx.arc(noseTip.x, noseTip.y, 5, 0, 2 * Math.PI);
+        ctx.fillStyle = "#ffaa44";
+        ctx.fill();
+        ctx.strokeStyle = "#ffffff";
+        ctx.stroke();
+        // small triangle indication
+        ctx.beginPath();
+        ctx.moveTo(noseTip.x - 6, noseTip.y + 2);
+        ctx.lineTo(noseTip.x, noseTip.y + 8);
+        ctx.lineTo(noseTip.x + 6, noseTip.y + 2);
+        ctx.fillStyle = "#ffaa44";
+        ctx.fill();
+      }
+      
+      // Mouth: indices 48-67 (outer lip)
+      const mouthPoints = points.slice(48, 68);
+      if (mouthPoints.length > 0) {
+        ctx.beginPath();
+        ctx.moveTo(mouthPoints[0].x, mouthPoints[0].y);
+        for (let i = 1; i < mouthPoints.length; i++) {
+          ctx.lineTo(mouthPoints[i].x, mouthPoints[i].y);
+        }
+        ctx.closePath();
+        ctx.strokeStyle = "#ff66aa";
+        ctx.lineWidth = 3;
+        ctx.stroke();
+        // fill with slight transparent
+        ctx.fillStyle = "rgba(255, 102, 170, 0.2)";
+        ctx.fill();
+      }
+    }
+    
     function startFaceDetection() {
       if (detectionInterval) clearInterval(detectionInterval);
       detectionInterval = setInterval(async () => {
         if (!modelsLoaded || !video.videoWidth || video.paused || video.ended) return;
         try {
-          const detections = await faceapi.detectAllFaces(video, new faceapi.TinyFaceDetectorOptions());
+          // Detect faces with landmarks
+          const detections = await faceapi.detectAllFaces(video, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks();
           const overlayCtx = faceOverlay.getContext('2d');
           overlayCtx.clearRect(0, 0, faceOverlay.width, faceOverlay.height);
           faceOverlay.width = video.videoWidth;
           faceOverlay.height = video.videoHeight;
           
           const hasFace = detections.length > 0;
+          let faceInside = false;
+          let landmarksExist = false;
+          
           if (hasFace) {
             const videoRect = { width: video.videoWidth, height: video.videoHeight };
             const borderMarginX = videoRect.width * 0.15;
@@ -1858,41 +1932,69 @@
               width: videoRect.width - (borderMarginX * 2),
               height: videoRect.height - (borderMarginY * 2)
             };
-            let faceInside = false;
-            for (const detection of detections) {
-              const box = detection.box;
-              const intersectX = Math.max(box.x, borderBox.x);
-              const intersectY = Math.max(box.y, borderBox.y);
-              const intersectW = Math.min(box.x + box.width, borderBox.x + borderBox.width) - intersectX;
-              const intersectH = Math.min(box.y + box.height, borderBox.y + borderBox.height) - intersectY;
-              if (intersectW > 0 && intersectH > 0) {
-                const intersectArea = intersectW * intersectH;
-                const faceArea = box.width * box.height;
-                if (intersectArea / faceArea > 0.7) { faceInside = true; break; }
+            
+            // Process first face
+            const detection = detections[0];
+            const box = detection.detection.box;
+            const intersectX = Math.max(box.x, borderBox.x);
+            const intersectY = Math.max(box.y, borderBox.y);
+            const intersectW = Math.min(box.x + box.width, borderBox.x + borderBox.width) - intersectX;
+            const intersectH = Math.min(box.y + box.height, borderBox.y + borderBox.height) - intersectY;
+            if (intersectW > 0 && intersectH > 0) {
+              const intersectArea = intersectW * intersectH;
+              const faceArea = box.width * box.height;
+              if (intersectArea / faceArea > 0.7) faceInside = true;
+            }
+            
+            // Check landmark completeness: eyes, nose, mouth must have valid points
+            const landmarks = detection.landmarks;
+            if (landmarks && landmarks.positions && landmarks.positions.length >= 68) {
+              const points = landmarks.positions;
+              // verify critical indices exist
+              const leftEyeIndices = [36,37,38,39,40,41];
+              const rightEyeIndices = [42,43,44,45,46,47];
+              let eyesValid = leftEyeIndices.every(i => points[i] && points[i].x > 0) && 
+                              rightEyeIndices.every(i => points[i] && points[i].x > 0);
+              let noseValid = points[30] && points[30].x > 0;
+              let mouthValid = points[48] && points[48].x > 0; // at least one mouth point
+              if (eyesValid && noseValid && mouthValid) {
+                landmarksExist = true;
+                // Draw the landmarks on overlay for visual feedback
+                drawLandmarks(overlayCtx, landmarks, faceOverlay.width, faceOverlay.height);
               }
             }
-            if (faceInside) {
-              if (!faceDetected) {
-                faceDetected = true;
-                faceStatusDiv.innerHTML = "✅ Wajah terdeteksi dalam area! Mengirim presensi...";
-                faceStatusDiv.classList.add('detection-success');
-                if (!autoSubmitTriggered) {
-                  autoSubmitTriggered = true;
-                  if (detectionInterval) clearInterval(detectionInterval);
-                  captureAndSubmit();
-                }
-              } else {
-                faceStatusDiv.innerHTML = "✅ Wajah dalam area - siap kirim";
+          }
+          
+          const readyToSubmit = faceInside && landmarksExist;
+          
+          if (readyToSubmit) {
+            if (!faceDetected) {
+              faceDetected = true;
+              faceStatusDiv.innerHTML = "✅ Wajah + Mata, Hidung, Mulut terdeteksi! Mengirim presensi...";
+              faceStatusDiv.classList.add('detection-success');
+              if (!autoSubmitTriggered) {
+                autoSubmitTriggered = true;
+                if (detectionInterval) clearInterval(detectionInterval);
+                captureAndSubmit();
               }
             } else {
-              faceDetected = false;
-              faceStatusDiv.innerHTML = "⚠️ Posisikan wajah di dalam border!";
-              faceStatusDiv.classList.add('detection-warning');
+              faceStatusDiv.innerHTML = "✅ Siap kirim (mata, hidung, mulut terdeteksi dalam area)";
             }
           } else {
             faceDetected = false;
-            faceStatusDiv.innerHTML = "❌ Tidak ada wajah terdeteksi";
-            faceStatusDiv.classList.add('detection-warning');
+            if (!hasFace) {
+              faceStatusDiv.innerHTML = "❌ Tidak ada wajah terdeteksi. Posisikan wajah di border.";
+              faceStatusDiv.classList.add('detection-warning');
+            } else if (!faceInside && hasFace) {
+              faceStatusDiv.innerHTML = "⚠️ Posisikan wajah di dalam border!";
+              faceStatusDiv.classList.add('detection-warning');
+            } else if (faceInside && !landmarksExist) {
+              faceStatusDiv.innerHTML = "⚠️ Wajah terdeteksi, namun mata/hidung/mulut tidak jelas. Hadap langsung ke kamera dengan pencahayaan cukup.";
+              faceStatusDiv.classList.add('detection-warning');
+            } else {
+              faceStatusDiv.innerHTML = "⚠️ Pastikan wajah berada dalam border dan fitur (mata, hidung, mulut) terlihat jelas.";
+              faceStatusDiv.classList.add('detection-warning');
+            }
           }
         } catch (err) { console.error("Face detection error:", err); }
       }, 500);
@@ -1923,6 +2025,7 @@
       startCamera();
       autoSubmitTriggered = false;
       faceDetected = false;
+      landmarksReady = false;
     });
     
     // ==================== FAKE GPS DETECTION ====================
@@ -1997,8 +2100,8 @@
     }
     
     function getPresensiParams() {
-      const datangStart = 6.0, datangEnd = 7.5;
-      let pulangStart = 13.0;
+      const datangStart = 6.0, datangEnd = 7.25;
+      let pulangStart = 15.0;
       const pulangEnd = 17.5;
       if (isFriday()) pulangStart = 14.5;
       return { datangStart, datangEnd, pulangStart, pulangEnd };
@@ -2306,7 +2409,6 @@
       
       faceStatusDiv.innerHTML = "📤 Mengirim presensi...";
       
-      // TAMPILKAN MENU PROGRES SETELAH FOTO DIAMBIL DAN SEBELUM PROSES KIRIM
       showProgressMenu("Menyiapkan data presensi...", 20);
       
       compressImage(fileToUpload, async function(compressedBlob) {
